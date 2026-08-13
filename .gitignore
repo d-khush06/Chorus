@@ -1,0 +1,24 @@
+# Ignore large AI model files & weights
+models/
+*.safetensors
+*.bin
+*.pth
+*.pt
+*.onnx
+*.h5
+.cache/
+
+# Python & Environment
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
