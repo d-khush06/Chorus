@@ -138,13 +138,37 @@ def run_duplicate_check(payload: ChorusPayload) -> Optional[str]:
     return None
 
 
-def run_deepfake_check(payload: ChorusPayload) -> bool:
+def run_deepfake_check(payload: "ChorusPayload") -> bool:
     """
-    STUB — Deepfake / Manipulation Detector
-    ────────────────────────────────────────
-    TODO (team): Plug in deepfake detection logic.
+    WIRED — Deepfake / Manipulation Detector (Step 4)
+    ──────────────────────────────────────────────────
+    Passes extracted frames to the Xception / SBT-based deepfake models.
     """
-    return False  # stub: no deepfake detected
+    if not _DEEPFAKE_CHECK_AVAILABLE:
+        print("  [DeepfakeCheck] Module not available — pass-through.")
+        return False
+
+    try:
+        from manipulation_detection import parse_step3_input
+        # Convert ChorusPayload to the contract expected by Step 4
+        payload_dict = {
+            "video_id": hashlib.sha256(payload.source_uri.encode()).hexdigest()[:12],
+            "video_path": payload.source_uri,
+            "source_type": "youtube" if "youtube" in payload.source_type else "local_upload",
+            "duration_seconds": payload.metadata.get("video_duration_seconds", 0.0),
+            "dedup_status": "unique",
+            "dedup_hash": payload.duplicate_hash or "none",
+            "upstream_metadata": payload.metadata
+        }
+        step3_out = parse_step3_input(payload_dict)
+        result = _real_deepfake_check(step3_out)
+        
+        flag = result.manipulation_check.verdict == "FLAGGED"
+        print(f"  [DeepfakeCheck] Completed. Verdict: {result.manipulation_check.verdict}, Error: {result.manipulation_check.detector_error}")
+        return flag
+    except Exception as exc:
+        print(f"  [DeepfakeCheck] Warning: {exc} — pass-through.")
+        return False  # stub: no deepfake detected
 
 
 def run_manual_annotation(payload: ChorusPayload) -> list:
@@ -462,15 +486,30 @@ class ChorusInputPipeline:
         return payload
 
 
+try:
+    from quality_gate import run_quality_gate as _real_quality_gate
+    _QUALITY_GATE_AVAILABLE = True
+except ImportError:
+    _QUALITY_GATE_AVAILABLE = False
+
+try:
+    from manipulation_detection import detect_manipulation as _real_deepfake_check
+    _DEEPFAKE_CHECK_AVAILABLE = True
+except ImportError:
+    _DEEPFAKE_CHECK_AVAILABLE = False
+
 # ─────────────────────────────────────────────────────────────────────────────
 # INTERACTIVE CLI
 # ─────────────────────────────────────────────────────────────────────────────
 VISUAL_TYPES = ("local_video", "local_image", "rtsp", "http_stream")
 
-BANNER = """
+BANNER = f"""
 ╔══════════════════════════════════════════════════════════╗
-║  🎬 CHORUS — Pure Code Input Adapter & Pipeline          ║
-╚══════════════════════════════════════════════════════════╝
+║  🎬 CHORUS — Input Adapter & Quality Pipeline                ║
+║  duplication_check : {str("✅ WIRED" if getattr(sys.modules[__name__], '_DEDUP_AVAILABLE', False) else "⚠️  not installed (pip install imagehash)")}
+║  quality_gate      : {str("✅ WIRED" if getattr(sys.modules[__name__], '_QUALITY_GATE_AVAILABLE', False) else "⚠️  not installed")}
+║  manipulation_det  : {str("✅ WIRED" if getattr(sys.modules[__name__], '_DEEPFAKE_CHECK_AVAILABLE', False) else "⚠️  not installed")}
+╚══════════════════════════════════════════════════════════════╝
 
   Input Sources Accepted:
   ────────────────────────
