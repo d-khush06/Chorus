@@ -63,22 +63,12 @@ def make_mock_step3_output(**overrides) -> Step3Output:
 
 def make_mock_model(fake_probability: float = 0.05):
     """
-    Return a (mock_model, mock_device) tuple that always predicts `fake_probability`.
-    Used instead of loading real SBI weights.
+    Return a (mock_model, mock_device) tuple using MagicMock.
+    Does not require PyTorch to be installed.
     """
-    import torch
-
-    class _FakeModel:
-        def __call__(self, tensor):
-            # Return logit that, when sigmoided, gives fake_probability
-            import math
-            logit_val = math.log(fake_probability / (1 - fake_probability + 1e-9))
-            return torch.tensor([[logit_val]])
-        def eval(self):       return self
-        def to(self, device): return self
-
-    device = torch.device("cpu")
-    return _FakeModel(), device
+    mock_model = MagicMock()
+    mock_device = "cpu"
+    return mock_model, mock_device
 
 
 def make_per_frame_scores(n_clean: int, n_fake: int) -> list:
