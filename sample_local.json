@@ -1,0 +1,54 @@
+{
+  "video_id": "local_upload_002",
+  "source_type": "local_upload",
+  "video_duration_seconds": 180,
+  "current_stream_position_seconds": null,
+  "stream_gaps": null,
+  "fused_timeline": [
+    {
+      "event_id": "ev_001",
+      "timestamp_start": 0.0,
+      "timestamp_end": 15.0,
+      "source": "asr",
+      "content": "Hello and welcome. Today we review quarterly results.",
+      "confidence_score": 0.9,
+      "speaker_id": "spk_A"
+    },
+    {
+      "event_id": "ev_002",
+      "timestamp_start": 15.0,
+      "timestamp_end": 30.0,
+      "source": "ocr",
+      "content": "Revenue: 2400000 USD. Growth: 12 percent YoY.",
+      "confidence_score": 0.88,
+      "speaker_id": null
+    },
+    {
+      "event_id": "ev_003",
+      "timestamp_start": 15.0,
+      "timestamp_end": 30.0,
+      "source": "asr",
+      "content": "Revenue reached 3200000 USD this quarter.",
+      "confidence_score": 0.72,
+      "speaker_id": "spk_A"
+    },
+    {
+      "event_id": "ev_004",
+      "timestamp_start": 30.0,
+      "timestamp_end": 50.0,
+      "source": "vision",
+      "content": "Bar chart showing quarterly revenue growth trend.",
+      "confidence_score": 0.85,
+      "speaker_id": null
+    },
+    {
+      "event_id": "ev_005",
+      "timestamp_start": 50.0,
+      "timestamp_end": 70.0,
+      "source": "diarization",
+      "content": "John speaks. Then Alice responds about projections.",
+      "confidence_score": 0.6,
+      "speaker_id": "spk_A"
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "video_id": "yt_demo_001",
+  "source_type": "youtube",
+  "video_duration_seconds": 240,
+  "current_stream_position_seconds": null,
+  "stream_gaps": null,
+  "fused_timeline": [
+    {
+      "event_id": "ev_001",
+      "timestamp_start": 0.0,
+      "timestamp_end": 12.0,
+      "source": "asr",
+      "content": "Welcome to the Chorus intelligence platform demo.",
+      "confidence_score": 0.94,
+      "speaker_id": "spk_1"
+    },
+    {
+      "event_id": "ev_002",
+      "timestamp_start": 12.0,
+      "timestamp_end": 25.0,
+      "source": "vision",
+      "content": "Presenter displays architecture diagram on screen.",
+      "confidence_score": 0.89,
+      "speaker_id": null
+    },
+    {
+      "event_id": "ev_003",
+      "timestamp_start": 25.0,
+      "timestamp_end": 40.0,
+      "source": "ocr",
+      "content": "Pipeline throughput: 1500 events per second",
+      "confidence_score": 0.81,
+      "speaker_id": null
+    },
+    {
+      "event_id": "ev_004",
+      "timestamp_start": 40.0,
+      "timestamp_end": 60.0,
+      "source": "diarization",
+      "content": "Speaker 1 continues discussing system reliability.",
+      "confidence_score": 0.67,
+      "speaker_id": "spk_1"
+    },
+    {
+      "event_id": "ev_005",
+      "timestamp_start": 60.0,
+      "timestamp_end": 80.0,
+      "source": "asr",
+      "content": "Our latency target is under 200 milliseconds end to end.",
+      "confidence_score": 0.91,
+      "speaker_id": "spk_1"
+    }
+  ]
+}
