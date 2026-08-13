@@ -1,0 +1,45 @@
+﻿{
+  "video_id": "sample_video_001",
+  "source_type": "youtube",
+  "video_duration_seconds": 300,
+  "current_stream_position_seconds": null,
+  "stream_gaps": null,
+  "fused_timeline": [
+    {
+      "event_id": "ev_001",
+      "timestamp_start": 0.0,
+      "timestamp_end": 10.5,
+      "source": "asr",
+      "content": "Welcome to the Chorus platform demo.",
+      "confidence_score": 0.92,
+      "speaker_id": "spk_1"
+    },
+    {
+      "event_id": "ev_002",
+      "timestamp_start": 10.5,
+      "timestamp_end": 20.0,
+      "source": "vision",
+      "content": "Presenter stands at whiteboard with diagram.",
+      "confidence_score": 0.88,
+      "speaker_id": null
+    },
+    {
+      "event_id": "ev_003",
+      "timestamp_start": 20.0,
+      "timestamp_end": 35.0,
+      "source": "ocr",
+      "content": "Pipeline throughput: 1500 events/sec",
+      "confidence_score": 0.76,
+      "speaker_id": null
+    },
+    {
+      "event_id": "ev_004",
+      "timestamp_start": 35.0,
+      "timestamp_end": 50.0,
+      "source": "diarization",
+      "content": "Speaker 1 continues talking about architecture.",
+      "confidence_score": 0.65,
+      "speaker_id": "spk_1"
+    }
+  ]
+}
