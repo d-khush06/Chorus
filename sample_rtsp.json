@@ -1,0 +1,45 @@
+{
+  "video_id": "rtsp_live_003",
+  "source_type": "live_rtsp",
+  "video_duration_seconds": null,
+  "current_stream_position_seconds": 145.0,
+  "stream_gaps": [
+    {
+      "gap_start": 30.0,
+      "gap_end": 33.5
+    },
+    {
+      "gap_start": 110.0,
+      "gap_end": 125.0
+    }
+  ],
+  "fused_timeline": [
+    {
+      "event_id": "ev_001",
+      "timestamp_start": 0.0,
+      "timestamp_end": 20.0,
+      "source": "vision",
+      "content": "Parking lot camera: 3 vehicles in frame.",
+      "confidence_score": 0.91,
+      "speaker_id": null
+    },
+    {
+      "event_id": "ev_002",
+      "timestamp_start": 33.5,
+      "timestamp_end": 60.0,
+      "source": "vision",
+      "content": "Parking lot camera: pedestrian enters from north gate.",
+      "confidence_score": 0.87,
+      "speaker_id": null
+    },
+    {
+      "event_id": "ev_003",
+      "timestamp_start": 125.0,
+      "timestamp_end": 145.0,
+      "source": "vision",
+      "content": "Camera view: delivery vehicle approaching loading dock.",
+      "confidence_score": 0.93,
+      "speaker_id": null
+    }
+  ]
+}
