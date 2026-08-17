@@ -1,6 +1,6 @@
-﻿# Chorus - Universal Video Intelligence Platform
+# Chorus - Universal Video Intelligence Platform
 
-Chorus is a comprehensive 17-step pipeline designed for video ingestion, analysis, and narration. This repository currently contains the implementation of **Steps 1 through 4**.
+Chorus is a comprehensive 17-step pipeline designed for video ingestion, analysis, and narration. This repository currently contains the implementation of **Steps 1 through 4 and Step 7**.
 
 ## Pipeline Progress: Completed Steps
 
@@ -70,4 +70,44 @@ Run the full verification suite (tests Steps 2, 3, and 4 against edge cases, moc
 ```bash
 # Verify Manipulation Detection (Step 4) unit tests (30/30)
 python test_manipulation_detection.py
+
+# Verify Scene Segmentation (Step 7) unit tests (43/43)
+python test_scene_segmentation.py
 ```
+
+---
+
+### Step 7: Scene Segmentation (`scene_segmentation.py`)
+Deterministic shot/scene boundary detection using **PySceneDetect** — no AI model, no LLM, no per-video parameter tuning.
+
+* **Purpose:** Produces a canonical `scenes` list that every downstream agent (Perception, Geo-estimation, Correlation, Fusion) keys its timestamps against.
+* **Detectors (Rule 1):**
+  * `general` mode → `ContentDetector` (standard, reliable default)
+  * `cyber` mode → `AdaptiveDetector` (tolerates handheld/bodycam camera shake without false cuts)
+* **Fixed Threshold (Rule 2):** `CONTENT_THRESHOLD = 27.0` — never tuned per-video; only changed after validation against a representative sample set.
+* **Minimum Scene Length (Rule 3):** Any cut producing a scene shorter than `MIN_SCENE_DURATION_S = 0.6 s` is dropped and absorbed into the adjacent scene. Sub-0.6 s scenes are almost always compression artefacts or flash frames.
+* **RTSP Chunked Detection (Rule 4):** Never runs on an open-ended live stream directly. Buffers into `RTSP_CHUNK_SECONDS = 30 s` fixed-length chunks; runs detection per chunk; offsets timestamps by the chunk's absolute stream position so `scene_id` / timestamps are consistent with the fused timeline.
+* **Empty Result Fallback (Rule 5):** If zero cuts are detected, returns exactly one scene spanning the full video duration. Downstream agents always receive at least one scene.
+* **Determinism Guarantee (Rule 6):** Same `video_path` + same detector/threshold always produces identical output. Non-determinism is treated as a pipeline bug, not normal variance.
+
+**Output format:**
+```json
+{
+  "scenes": [
+    { "scene_id": 0, "start_seconds": 0.0, "end_seconds": 12.4 },
+    { "scene_id": 1, "start_seconds": 12.4, "end_seconds": 30.1 }
+  ],
+  "detector_used": "content",
+  "source_type": "local_upload"
+}
+```
+
+**CLI usage:**
+```bash
+python scene_segmentation.py --video clip.mp4 --source-type local_upload --mode general --pretty
+python scene_segmentation.py --video clip.mp4 --source-type local_upload --mode cyber  --pretty
+python scene_segmentation.py --url  rtsp://cam/stream --source-type live_rtsp --mode general --pretty
+```
+
+**Dependency:** `pip install scenedetect[opencv]`
+
