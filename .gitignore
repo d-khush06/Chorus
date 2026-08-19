@@ -1,5 +1,7 @@
 # Ignore large AI model files & weights
 models/
+orchestrator_lora/
+datasets/
 *.safetensors
 *.bin
 *.pth
@@ -7,6 +9,17 @@ models/
 *.onnx
 *.h5
 .cache/
+
+# Videos & Media
+*.mp4
+*.mkv
+*.avi
+*.mov
+
+# Logs & temporary outputs
+audit_logs/
+text_output.*
+vl_output.*
 
 # Python & Environment
 __pycache__/
@@ -24,3 +37,4 @@ env/
 .idea/
 .DS_Store
 Thumbs.db
+
