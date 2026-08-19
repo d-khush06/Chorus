@@ -214,22 +214,35 @@ def _load_retinaface():
         )
 
 
-def _detect_faces_retinaface(frame_bgr, retinaface_module):
+def _detect_faces_retinaface(frame_bgr, detector):
     """
-    Run RetinaFace on a BGR frame and return list of (x1,y1,x2,y2) bounding boxes.
+    Run Face Detection on a BGR frame and return list of (x1,y1,x2,y2) bounding boxes.
     Returns empty list on failure.
     """
     try:
-        resp = retinaface_module.detect_faces(frame_bgr)
         boxes = []
-        if isinstance(resp, dict):
-            for _, face_data in resp.items():
-                box = face_data.get("facial_area", [])
-                if len(box) == 4:
-                    boxes.append(tuple(box))
+        if hasattr(detector, "detect_faces"):
+            # RetinaFace logic
+            resp = detector.detect_faces(frame_bgr)
+            if isinstance(resp, dict):
+                for _, face_data in resp.items():
+                    box = face_data.get("facial_area", [])
+                    if len(box) == 4:
+                        boxes.append(tuple(box))
+        elif hasattr(detector, "detect"):
+            # MTCNN logic
+            from PIL import Image
+            import numpy as np
+            rgb = frame_bgr[:, :, ::-1]
+            img = Image.fromarray(rgb)
+            bboxes, probs = detector.detect(img)
+            if bboxes is not None:
+                for b in bboxes:
+                    boxes.append(tuple(b))
         return boxes
     except Exception as e:
-        log.debug(f"RetinaFace detection failed on frame: {e}")
+        import logging
+        logging.getLogger("chorus.manipulation_detection").debug(f"Face detection failed on frame: {e}")
         return []
 
 

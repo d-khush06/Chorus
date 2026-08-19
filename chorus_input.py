@@ -69,6 +69,9 @@ class ChorusPayload:
     quality_score:         Optional[float] = None  # 0.0–1.0; Quality Gate fills this
     duplicate_hash:        Optional[str]   = None  # perceptual hash; Duplicate Check fills
     is_deepfake:           Optional[bool]  = None  # True/False; Deepfake detector fills
+    deepfake_flag:         bool            = False # Face-swap / Manipulation flag
+    ai_generated_flag:     bool            = False # Synthetic Diffusion / 100% AI Gen flag
+    ai_generation_report:  dict            = field(default_factory=dict)
     annotation_flags:      list            = field(default_factory=list)
     orchestrator_decision: Optional[str]   = None  # "vl_model" | "text_model" | ...
 
@@ -87,8 +90,10 @@ class ChorusPayload:
             f"Frames Extracted  : {len(self.frames)}",
             f"User Question     : {self.user_question}",
             f"Quality Gate Score: {self.quality_score if self.quality_score is not None else 'N/A'}",
-            f"Duplicate Hash    : {self.duplicate_hash[:16] + '...' if self.duplicate_hash else 'N/A'}",
-            f"Deepfake Flag     : {self.is_deepfake}",
+            f"Duplicate Hash    : {self.duplicate_hash[:16] + '...' if self.duplicate_hash else 'None'}",
+            f"Deepfake Flag     : {self.deepfake_flag}",
+            f"AI Generated Flag : {self.ai_generated_flag}",
+            f"AI Screening      : {self.ai_generation_report.get('verdict', 'NOT_RUN')}",
             f"Annotation Flags  : {self.annotation_flags if self.annotation_flags else 'None'}",
             f"Orchestrator Target: {self.orchestrator_decision}",
         ]
@@ -148,12 +153,23 @@ def run_deepfake_check(payload: "ChorusPayload") -> bool:
         print("  [DeepfakeCheck] Module not available — pass-through.")
         return False
 
+    # A model verdict is meaningful only when the input adapter actually
+    # extracted visual frames. Do not turn a download/search failure into a
+    # user-facing deepfake claim.
+    if not payload.frames:
+        payload.metadata["deepfake_check"] = {
+            "verdict": "NOT_ANALYSED",
+            "reason": "No video frames were extracted from the source.",
+        }
+        print("  [DeepfakeCheck] Skipped - no extracted frames.")
+        return False
+
     try:
         from manipulation_detection import parse_step3_input
         # Convert ChorusPayload to the contract expected by Step 4
         payload_dict = {
             "video_id": hashlib.sha256(payload.source_uri.encode()).hexdigest()[:12],
-            "video_path": payload.source_uri,
+            "video_path": payload.metadata.get("local_video_path", payload.source_uri),
             "source_type": "youtube" if "youtube" in payload.source_type else "local_upload",
             "duration_seconds": payload.metadata.get("video_duration_seconds", 0.0),
             "dedup_status": "unique",
@@ -163,7 +179,15 @@ def run_deepfake_check(payload: "ChorusPayload") -> bool:
         step3_out = parse_step3_input(payload_dict)
         result = _real_deepfake_check(step3_out)
         
-        flag = result.manipulation_check.verdict == "FLAGGED"
+        check = result.manipulation_check
+        payload.metadata["deepfake_check"] = {
+            "verdict": check.verdict,
+            "detector_error": check.detector_error,
+            "frames_analyzed": check.frames_analyzed,
+            "faces_detected": check.faces_detected,
+        }
+        # An error is a review request, not evidence of a deepfake.
+        flag = check.verdict == "FLAGGED" and not check.detector_error and check.frames_analyzed > 0
         print(f"  [DeepfakeCheck] Completed. Verdict: {result.manipulation_check.verdict}, Error: {result.manipulation_check.detector_error}")
         return flag
     except Exception as exc:
@@ -193,11 +217,14 @@ class InputRouter:
 
     @classmethod
     def detect(cls, user_input: str) -> str:
-        s = user_input.strip()
+        s = user_input.strip().strip('"\'')
 
         if cls._YT.search(s):
+            is_direct_video = any(marker in s.lower() for marker in (
+                "watch?v=", "/shorts/", "/live/", "youtu.be/"
+            ))
             if "results" in s or "search_query" in s or (
-                "youtube.com" in s.lower() and "watch?v=" not in s and "youtu.be" not in s
+                "youtube.com" in s.lower() and not is_direct_video
             ):
                 return "youtube_search"
             return "youtube"
@@ -227,19 +254,59 @@ class InputRouter:
 # ─────────────────────────────────────────────────────────────────────────────
 class YouTubeAdapter:
     def process(self, source_uri: str, source_type: str) -> ChorusPayload:
-        try:
-            from playwright.sync_api import sync_playwright
-        except ImportError:
-            return self._err(source_uri,
-                "Playwright not installed. Run: pip install playwright && playwright install chromium")
-
         if source_type == "youtube_search":
+            try:
+                from playwright.sync_api import sync_playwright
+            except ImportError:
+                return self._err(source_uri,
+                    "Playwright not installed. Run: pip install playwright && playwright install chromium")
             query = self._parse_query(source_uri)
             url = f"https://www.youtube.com/results?search_query={query.replace(' ', '+')}"
         else:
-            url = source_uri
+            # DIRECT YOUTUBE URL -> Download and extract frames
+            try:
+                import yt_dlp
+                import tempfile
+                import os
+                
+                print(f"  [YouTube Adapter] Downloading video from {source_uri}...")
+                temp_dir = tempfile.gettempdir()
+                out_file = os.path.join(temp_dir, "temp_yt_video.mp4")
+                
+                if os.path.exists(out_file):
+                    os.remove(out_file)
+                
+                ydl_opts = {
+                    # Prefer one progressive stream so FFmpeg is not required
+                    # merely to join separate video and audio tracks.
+                    'format': 'best[ext=mp4][height<=720]/best[height<=720]/best',
+                    'outtmpl': out_file,
+                    'noplaylist': True,
+                    'quiet': True,
+                    # Node is installed on this machine. YouTube now requires a
+                    # JavaScript runtime for many format URLs/signatures.
+                    'js_runtimes': {'node': {}},
+                    'remote_components': {'ejs:github'},
+                    'extractor_args': {
+                        'youtube': {'player_client': ['web', 'android']},
+                    },
+                }
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    ydl.download([source_uri])
+                
+                print(f"  [YouTube Adapter] Video downloaded. Handing off to local processor...")
+                local_adapter = LocalAdapter()
+                payload = local_adapter.process(out_file, "local_video")
+                
+                # Fix up the payload to reflect the original YouTube source
+                payload.source_type = "youtube"
+                payload.source_uri = source_uri
+                payload.metadata["local_video_path"] = out_file
+                return payload
+            except Exception as e:
+                return self._err(source_uri, f"YouTube download error: {e}")
 
-        print(f"  [YouTube Adapter] Opening: {url}")
+        print(f"  [YouTube Adapter] Opening search: {url}")
         videos = []
 
         try:
@@ -296,6 +363,7 @@ class YouTubeAdapter:
         return ChorusPayload(
             source_type="youtube", source_uri=source_uri, frames=[],
             metadata={"video_count": len(videos), "scraped_url": url,
+                      "search_results": videos,
                       "timestamp": datetime.now().isoformat()},
             raw_text=raw_text.strip(),
         )
@@ -356,11 +424,17 @@ class LocalAdapter:
         width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         dur    = round(total / fps, 2) if fps > 0 else 0
+        
+        # Dynamic frame sampling: roughly 1 frame per 1.5s of video, bounded between 8 and 24 frames
+        if "LOCAL_VIDEO_FRAMES" in os.environ:
+            n = min(int(os.environ["LOCAL_VIDEO_FRAMES"]), max(total, 1))
+        else:
+            dynamic_target = max(8, min(24, int(dur / 1.5) if dur > 0 else 8))
+            n = min(dynamic_target, max(total, 1))
 
-        n = min(LOCAL_VIDEO_FRAMES, max(total, 1))
         indices = [int(i * (total - 1) / (n - 1)) for i in range(n)] if n > 1 else [0]
 
-        print(f"  [Local Adapter] Extracting {n} frames from {total} total ({dur}s @ {fps:.1f}fps)...")
+        print(f"  [Local Adapter] Dynamically extracting {n} frames from {total} total ({dur}s @ {fps:.1f}fps)...")
         frames = []
         for idx in indices:
             cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
@@ -470,16 +544,55 @@ class ChorusInputPipeline:
         )
 
     def _run_pipeline(self, payload: ChorusPayload) -> ChorusPayload:
+        if payload.metadata.get("error"):
+            # Nothing was downloaded, so no video-specific result is valid.
+            payload.quality_score = None
+            payload.deepfake_flag = False
+            payload.is_deepfake = False
+            payload.ai_generated_flag = False
+            payload.ai_generation_report = {
+                "verdict": "NOT_ANALYSED",
+                "reason": payload.metadata["error"],
+            }
+            payload.orchestrator_decision = "input_error"
+            payload.annotation_flags = []
+            return payload
+
+        print("  [Pipeline] Running quality gate → duplicate → deepfake → ai_detector → orchestrator stubs...")
         payload.quality_score         = run_quality_gate(payload)
         payload.duplicate_hash        = run_duplicate_check(payload)
-        payload.is_deepfake           = run_deepfake_check(payload)
+        payload.deepfake_flag         = run_deepfake_check(payload)
+        payload.is_deepfake           = payload.deepfake_flag
+
+        try:
+            from ai_generation_detection import analyze_ai_generation
+            # YouTube input is downloaded by the adapter.  Analyse that file, not
+            # the watch URL; CCTV/local sources keep their original local path.
+            video_path = payload.metadata.get("local_video_path", payload.source_uri)
+            report = analyze_ai_generation(video_path)
+            payload.ai_generation_report = report
+            payload.metadata["ai_generation_report"] = report
+            payload.ai_generated_flag = report["verdict"] == "LIKELY_AI_GENERATED"
+        except Exception as e:
+            print(f"  [Pipeline] AI Generation Detection failed: {e}")
+        
+        if payload.is_deepfake:
+            payload.quality_score = 0.0
+            payload.orchestrator_decision = "flag_review"
+        else:
+            payload.orchestrator_decision = run_orchestrator(payload)
+            
         payload.annotation_flags      = run_manual_annotation(payload)
-        payload.orchestrator_decision = run_orchestrator(payload)
         return payload
+
+    def run_payload(self, payload: ChorusPayload, user_question: str = "") -> ChorusPayload:
+        """Run analysis for a payload that has already been created."""
+        payload.user_question = user_question or payload.raw_text or "Process input"
+        return self._run_pipeline(payload)
 
     def process(self, user_input: str, user_question: str = "") -> ChorusPayload:
         payload = self.build_payload(user_input)
-        payload.user_question = user_question or payload.raw_text or "Process input"
+        return self.run_payload(payload, user_question)
 
         print("  [Pipeline] Running quality gate → duplicate → deepfake → orchestrator stubs...")
         payload = self._run_pipeline(payload)
@@ -531,7 +644,7 @@ def main():
     while True:
         try:
             print("─" * 60)
-            user_input = input("📥 Input > ").strip()
+            user_input = input("📥 Input > ").strip().strip('"\'')
 
             if not user_input:
                 continue
@@ -549,7 +662,65 @@ def main():
 
             print()
             t0 = time.time()
-            payload = pipeline.process(user_input, user_question)
+            if detected == "youtube_search":
+                # The browser agent finds candidates; the user selects exactly
+                # one before any video analysis is run.
+                search_payload = pipeline.build_payload(user_input)
+                results = search_payload.metadata.get("search_results", [])
+                if not results:
+                    print("  [Browser Search] No playable video result was found.")
+                    payload = pipeline.run_payload(search_payload, user_question)
+                else:
+                    print("\n  [Browser Search] Choose a video to analyse:")
+                    for number, video in enumerate(results, 1):
+                        channel = f" - {video.get('channel')}" if video.get('channel') else ""
+                        print(f"    {number}. {video.get('title', 'Untitled')}{channel}")
+                    choice = input("  Video number (or Enter to cancel) > ").strip()
+                    try:
+                        selected = results[int(choice) - 1] if choice else None
+                    except (ValueError, IndexError):
+                        selected = None
+                    if selected:
+                        print(f"  [Browser Search] Selected: {selected['url']}")
+                        video_payload = pipeline.build_payload(selected["url"])
+                        payload = pipeline.run_payload(video_payload, user_question)
+                    else:
+                        search_payload.metadata["analysis_status"] = "NOT_ANALYSED: no search result selected"
+                        payload = search_payload
+                        print("  [Browser Search] Analysis cancelled; no video selected.")
+            else:
+                payload = pipeline.process(user_input, user_question)
+            
+            # --- MODEL ROUTING (Bypassing Orchestrator Stub) ---
+            if payload.metadata.get("error"):
+                print(f"\n  [Routing] Analysis skipped: {payload.metadata['error']}")
+            elif payload.frames:
+                # 1st Model: Visual Input -> VL Agent
+                print("\n  [Routing] Visual payload detected. Loading 1st Model (VL Agent) into memory...")
+                try:
+                    from run_vl_agent import run_vision_analysis
+                    payload.metadata["ai_generated_flag"] = getattr(payload, "ai_generated_flag", False)
+                    payload.metadata["deepfake_flag"] = getattr(payload, "deepfake_flag", False)
+                    vl_response = run_vision_analysis(payload.frames, payload.user_question, payload.metadata)
+                    
+                    if vl_response:
+                        print(f"\n{'═' * 60}")
+                        print("🤖 VISION MODEL RESPONSE:")
+                        print("═" * 60)
+                        print(vl_response.strip())
+                        print("═" * 60 + "\n")
+                except ImportError as e:
+                    print(f"\n  [Routing ERROR] Could not load VL Agent: {e}")
+            else:
+                # 2nd Model: Text/URL Input -> Text Agent
+                try:
+                    from run_text_agent import run_text_analysis
+                    print("\n  [Routing] Text/URL payload detected. Routing to 2nd Model (Text Agent)...")
+                    run_text_analysis(payload.user_question, payload.metadata, payload.raw_text)
+                except ImportError as e:
+                    print(f"\n  [Routing ERROR] Could not load Text Agent: {e}")
+            # ---------------------------------------------------
+
             took = time.time() - t0
 
             print(f"\n{'═' * 60}")
