@@ -1,0 +1,32 @@
+.conf-bar {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.conf-bar__track {
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.conf-bar__fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width var(--transition-mid);
+}
+
+.conf-bar__fill--high { background: var(--green); }
+.conf-bar__fill--mid  { background: var(--amber); }
+.conf-bar__fill--low  { background: var(--red); }
+
+.conf-bar__label {
+  font-size: 10px;
+  color: var(--text-3);
+  white-space: nowrap;
+  min-width: 28px;
+  text-align: right;
+}

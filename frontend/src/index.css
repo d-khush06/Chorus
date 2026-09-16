@@ -1,0 +1,269 @@
+/* ============================================================
+   Chorus — Evidence Room
+   Design tokens + global baseline
+   ============================================================ */
+
+/* --- Google Fonts are imported via <link> in index.html --- */
+
+/* --- CSS Custom Properties (Design Tokens) --- */
+:root {
+  /* Surfaces */
+  --bg:          #0B0D10;
+  --surface:     #14171B;
+  --surface-alt: #1B1F24;
+  --border:      #262B31;
+
+  /* Text */
+  --text-1:      #F2F3F5;
+  --text-2:      #A8AEB6;
+  --text-3:      #6B7178;
+
+  /* Functional colors — only appear on actual state, never decorative */
+  --amber:       #E8A33D;
+  --green:       #3DDC97;
+  --red:         #E5484D;
+
+  /* Typography */
+  --mono-font:   'JetBrains Mono', monospace;
+  --sans-font:   'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* Spacing scale */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+
+  /* Radii */
+  --radius-sm: 3px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  /* Sidebar widths */
+  --sidebar-left-width:  280px;
+  --sidebar-right-width: 320px;
+
+  /* Transitions — only on real state changes */
+  --transition-fast: 150ms ease;
+  --transition-mid:  200ms ease;
+}
+
+/* --- Global Reset --- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  height: 100%;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text-1);
+  font-family: var(--sans-font);
+  font-weight: 400;
+  line-height: 1.5;
+  overflow: hidden;
+}
+
+#root {
+  height: 100%;
+}
+
+/* --- Typography utilities --- */
+.mono {
+  font-family: var(--mono-font);
+}
+
+.sans {
+  font-family: var(--sans-font);
+}
+
+.text-1 { color: var(--text-1); }
+.text-2 { color: var(--text-2); }
+.text-3 { color: var(--text-3); }
+
+/* --- Scrollbars (webkit) --- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-3);
+}
+
+/* --- App Shell Layout --- */
+.app-shell {
+  display: grid;
+  grid-template-columns: var(--sidebar-left-width) 1fr var(--sidebar-right-width);
+  grid-template-rows: 100vh;
+  grid-template-areas: "left main right";
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Left collapsed — icon strip at 56px */
+.app-shell.left-collapsed {
+  grid-template-columns: 56px 1fr var(--sidebar-right-width);
+}
+
+/* Right panel as drawer (below 1200px) */
+.app-shell.right-drawer {
+  grid-template-columns: var(--sidebar-left-width) 1fr;
+  grid-template-areas: "left main";
+}
+
+.app-shell.right-drawer.left-collapsed {
+  grid-template-columns: 56px 1fr;
+}
+
+/* --- App Header Bar --- */
+.app-header {
+  grid-area: left / left / left / right;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 0 var(--space-4);
+  height: 48px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+}
+
+/* --- Responsive: right drawer button --- */
+.drawer-toggle-btn {
+  position: fixed;
+  bottom: var(--space-5);
+  right: var(--space-5);
+  z-index: 200;
+  display: none;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-2);
+  font-family: var(--sans-font);
+  font-size: 12px;
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.drawer-toggle-btn:hover {
+  color: var(--text-1);
+  border-color: var(--text-3);
+}
+
+/* --- Right Drawer Overlay --- */
+.right-drawer-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 13, 16, 0.6);
+  z-index: 150;
+  transition: opacity var(--transition-mid);
+}
+
+.right-drawer-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: var(--sidebar-right-width);
+  height: 100vh;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  z-index: 160;
+  overflow-y: auto;
+  transform: translateX(100%);
+  transition: transform var(--transition-mid);
+}
+
+.right-drawer-panel.open {
+  transform: translateX(0);
+}
+
+/* --- Responsive breakpoints --- */
+@media (max-width: 1200px) {
+  .app-shell {
+    grid-template-columns: var(--sidebar-left-width) 1fr;
+    grid-template-areas: "left main";
+  }
+  .app-shell.left-collapsed {
+    grid-template-columns: 56px 1fr;
+  }
+  .drawer-toggle-btn {
+    display: flex;
+  }
+  .right-drawer-overlay.visible {
+    display: block;
+  }
+  .right-drawer-overlay.visible.active {
+    display: block;
+    opacity: 1;
+  }
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    grid-template-columns: 56px 1fr;
+    grid-template-areas: "left main";
+  }
+  .app-shell.left-collapsed {
+    grid-template-columns: 56px 1fr;
+  }
+}
+
+/* --- Utility: truncate with tooltip --- */
+.truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* --- Utility: visually-hidden (for screen readers) --- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --- Focus visible ring --- */
+:focus-visible {
+  outline: 2px solid var(--text-3);
+  outline-offset: 2px;
+}
+
+button {
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: inherit;
+}
