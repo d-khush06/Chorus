@@ -1,7 +1,7 @@
 import os
 import json
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 
 LOCAL_MODEL_PATH = os.path.join(".", "models", "Qwen2.5-7B-Browser-Agent-Merged")
 MODEL_ID = "dkhush06/Qwen2.5-7B-Browser-Agent-Merged"
@@ -25,18 +25,46 @@ def load_text_model():
     print(f"  [Text Agent] Running on device: {_device.upper()}")
 
     _tokenizer = AutoTokenizer.from_pretrained(model_source)
-    _model = AutoModelForCausalLM.from_pretrained(
-        model_source,
-        torch_dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32,
-        device_map="auto" if torch.cuda.is_available() else None,
-        low_cpu_mem_usage=True
-    )
 
-    if _device == "cpu":
+    if torch.cuda.is_available():
+        bnb_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_compute_dtype=torch.bfloat16,
+            bnb_4bit_use_double_quant=True,
+        )
+        _model = AutoModelForCausalLM.from_pretrained(
+            model_source,
+            quantization_config=bnb_config,
+            device_map="auto",
+            low_cpu_mem_usage=True,
+        )
+    else:
+        _model = AutoModelForCausalLM.from_pretrained(
+            model_source,
+            torch_dtype=torch.float32,
+            device_map=None,
+            low_cpu_mem_usage=True,
+        )
         _model.to("cpu")
 
     print("  [Text Agent] Qwen2.5-7B Text Model loaded successfully!")
     return _model, _tokenizer
+
+
+def unload_text_model():
+    """Release the Text Brain model from VRAM/CPU memory."""
+    global _model, _tokenizer
+    if _model is not None:
+        try:
+            del _model
+        except Exception:
+            pass
+        _model = None
+        _tokenizer = None
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        print("  [Text Agent] Model unloaded from memory.", flush=True)
 
 def run_text_analysis(user_prompt, metadata, raw_text=""):
     """

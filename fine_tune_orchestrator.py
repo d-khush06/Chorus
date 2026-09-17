@@ -114,8 +114,10 @@ def load_and_prepare_dataset(dataset_name_or_path: str, tokenizer, sample_size: 
 
     # Optional sampling to limit duration/memory if requested
     if sample_size and sample_size < len(dataset):
-        print(f"Sampling {sample_size} examples out of {len(dataset)} for training...")
-        dataset = dataset.shuffle(seed=42).select(range(sample_size))
+        import random
+        dynamic_seed = random.randint(0, 100000)
+        print(f"Sampling {sample_size} examples out of {len(dataset)} using random seed {dynamic_seed}...")
+        dataset = dataset.shuffle(seed=dynamic_seed).select(range(sample_size))
 
     # Standardize data structure
     print("Standardizing dataset conversations...")
@@ -217,7 +219,7 @@ def main(dataset_name: str, model_id: str, output_dir: str, sample_size: int = N
         per_device_train_batch_size=1,
         gradient_accumulation_steps=8,   # Effective batch 8 — stable and memory-efficient
         warmup_steps=50,
-        num_train_epochs=3,
+        num_train_epochs=1,              # ← Reduced to 1 Epoch for speed
         learning_rate=2e-4,
         fp16=not torch.cuda.is_bf16_supported(),
         bf16=torch.cuda.is_bf16_supported(),
