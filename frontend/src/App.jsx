@@ -7,16 +7,28 @@
  *   - Responsive layout state (leftCollapsed, rightDrawerOpen)
  *   - Scroll-to-scene via scene refs map
  */
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useContext } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { fetchCases, fetchTimeline, verifyIntegrity } from './data/api.js';
+import AuthContext from './context/AuthContext';
 import CaseList from './components/CaseList.jsx';
 import CaseManifestPanel from './components/CaseManifestPanel.jsx';
 import TimelineScrubber from './components/TimelineScrubber.jsx';
 import FusedEventCard from './components/FusedEventCard.jsx';
 import ConflictCard from './components/ConflictCard.jsx';
+import AnalyticsPage from './pages/AnalyticsPage.jsx';
+import LoginPage from './pages/LoginPage.jsx';
 import './App.css';
 
-export default function App() {
+// Private Route Wrapper
+const PrivateRoute = ({ children }) => {
+  const { token, loading } = useContext(AuthContext);
+  if (loading) return <div style={{ color: 'white', padding: '20px' }}>Loading...</div>;
+  return token ? children : <Navigate to="/login" />;
+};
+
+function EvidenceRoom() {
+  const navigate = useNavigate();
   const [cases, setCases] = useState([]);
   const [selectedId, setSelectedId] = useState(null);
   const [timelineData, setTimelineData] = useState(null);
@@ -89,6 +101,8 @@ export default function App() {
   // Determine which scene IDs have already been registered (to know "first" per scene)
   const seenScenes = new Set();
 
+  const { logout } = useContext(AuthContext);
+
   return (
     <div
       className={[
@@ -125,6 +139,28 @@ export default function App() {
                 ⚑ {timelineData.conflicts.length} conflict{timelineData.conflicts.length !== 1 ? 's' : ''}
               </span>
             )}
+            {/* Analytics Platform nav button */}
+            <button
+              id="open-analytics-btn"
+              className="analytics-nav-btn"
+              onClick={() => navigate('/analytics')}
+              aria-label="Open Universal Video Analytics Platform"
+            >
+              <span style={{ fontSize: 14 }}>⬡</span>
+              <span>Video Analytics</span>
+            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: '12px', paddingLeft: '12px', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
+              <span className="mono text-3" style={{ fontSize: '13px' }}>
+                {useContext(AuthContext).user?.email || 'Logged In'}
+              </span>
+              <button
+                className="analytics-nav-btn"
+                onClick={() => { logout(); navigate('/login'); }}
+                style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', borderColor: 'rgba(239,68,68,0.3)' }}
+              >
+                Sign Out
+              </button>
+            </div>
             {/* Right panel toggle (shown when drawer mode) */}
             {isNarrow && selectedCase && (
               <button
@@ -240,4 +276,29 @@ function buildMergedTimeline(timelineData) {
   const merged = [...events, ...conflicts];
   merged.sort((a, b) => a.t - b.t || (a.kind === 'conflict' ? 1 : -1));
   return merged;
+}
+
+export default function App() {
+  const navigate = useNavigate();
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/auth/callback" element={<LoginPage />} />
+      <Route path="/analytics" element={
+        <PrivateRoute>
+          <AnalyticsPage onBack={() => navigate('/evidence')} />
+        </PrivateRoute>
+      } />
+      <Route path="/evidence" element={
+        <PrivateRoute>
+          <EvidenceRoom />
+        </PrivateRoute>
+      } />
+      <Route path="/" element={
+        <PrivateRoute>
+          <Navigate to="/analytics" replace />
+        </PrivateRoute>
+      } />
+    </Routes>
+  );
 }

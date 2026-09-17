@@ -14,6 +14,12 @@
 import { mockCases } from './mockCases.js';
 import { mockTimelines } from './mockTimelines.js';
 
+// Helper to get auth headers for real API calls
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('token');
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+};
+
 /**
  * Returns the list of all case manifests.
  * @returns {Promise<Array>}

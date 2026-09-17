@@ -1,5 +1,5 @@
 # Ignore large AI model files & weights
-models/
+/models/
 orchestrator_lora/
 datasets/
 *.safetensors
@@ -38,5 +38,7 @@ env/
 .DS_Store
 Thumbs.db
 
-frontend/node_modules/
+node_modules/
+**/node_modules/
 frontend/dist/
+backend/dist/

@@ -77,6 +77,32 @@
   border-color: var(--text-3);
 }
 
+/* ── Analytics Platform nav button ── */
+.analytics-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--sans-font);
+  letter-spacing: 0.04em;
+  color: #a5b4fc;
+  padding: 5px 12px;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: var(--radius-md);
+  background: rgba(99, 102, 241, 0.08);
+  cursor: pointer;
+  transition: all 150ms ease;
+  white-space: nowrap;
+}
+
+.analytics-nav-btn:hover {
+  background: rgba(99, 102, 241, 0.16);
+  border-color: rgba(99, 102, 241, 0.5);
+  color: #c7d2fe;
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.2);
+}
+
 /* ── Timeline Event List ── */
 .timeline-list {
   flex: 1;
