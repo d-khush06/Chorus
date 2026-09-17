@@ -1,7 +1,7 @@
 """
 fusion_agent.py
 ===============
-Chorus -- Step 13: Fusion Agent
+Chorus -- Step 13 & Step 8: Fusion Agent
 
 Pipeline position:
   Step 12 (Context / Enrichment) -> [THIS MODULE] -> Step 14 (Correlation)
@@ -58,10 +58,48 @@ Each of the four source lists contains dicts with at least:
   }
 
 Output schema
+=======
+Chorus Pipeline — Step 8: Fusion Agent
+
+Pipeline position
+-----------------
+  Runs AFTER : ASR Agent (7a), Scene Segmentation (7),
+               VL Vision Agent (perception), Manipulation Detection (4),
+               Acoustic Event Detection (C1), Geo Estimation (C2),
+               Face Re-ID (C3), Alert System (C4)
+  Runs BEFORE: Context Enrichment, Analytics, Domain Output
+
+Purpose
+-------
+Merges all agent outputs (VL frame descriptions, ASR transcript segments,
+scene boundaries, deepfake flags, OCR findings, acoustic events, geo
+estimates, face re-identity tracks) into one unified, time-sorted
+timeline. This is the single source of truth that all downstream reasoning
+agents (context enrichment, analytics, domain output) consume.
+
+Rules
+-----
+1. The scene list from scene_segmentation is the canonical time axis.
+   Every other event is slotted into the scene it falls within.
+2. ASR segments are matched to scenes by midpoint overlap.
+3. VL frame descriptions are matched to scenes by the frame's timestamp
+   (or estimated timestamp based on frame index and video fps).
+4. Acoustic events are matched to scenes by midpoint overlap.
+5. All timestamps are stored in seconds (float). No absolute datetimes
+   inside the fused timeline — those live in the outer metadata.
+6. If an event has no timestamp (e.g. a single-image payload), it is
+   assigned to scene_id=0.
+7. The fused timeline is deterministic — same inputs always produce the
+   same output.
+8. Never raise — return an error key in the result dict on failure.
+
+Output format
+>>>>>>> fc981f9 (feat: implement Chorus full pipeline for General and Cyber modes)
 -------------
 {
   "fused_timeline": [
     {
+<<<<<<< HEAD
       "scene_id":      int,
       "start_seconds": float,
       "end_seconds":   float,
@@ -83,10 +121,39 @@ Output schema
     }
   ],
   "scenes_with_no_signal": [int, ...]
+=======
+      "scene_id": 0,
+      "start_s": 0.0,
+      "end_s": 12.4,
+      "vl_description": "...",
+      "asr_segments": [...],
+      "asr_text": "...",
+      "acoustic_events": [...],
+      "scene_tags": ["speech_detected", "text_on_screen", "gunshot_detected"]
+    },
+    ...
+  ],
+  "cyber_summary": {
+    "acoustic_events_total": 3,
+    "geo_estimate": {"lat": ..., "lon": ..., "confidence": ...},
+    "identities_detected": 2,
+    "alerts_triggered": 1
+  },
+  "summary": { ... },
+  "full_transcript": "...",
+  "metadata": { ... },
+  "deepfake_flag": false,
+  "ai_generated_flag": false,
+  "source_type": "local_video",
+  "source_uri": "clip.mp4",
+  "fused_at": "2026-09-16T14:00:00Z",
+  "error": null
+>>>>>>> fc981f9 (feat: implement Chorus full pipeline for General and Cyber modes)
 }
 
 Usage (library)
 ---------------
+<<<<<<< HEAD
   from fusion_agent import fuse_timeline
 
   result = fuse_timeline(
@@ -688,17 +755,446 @@ def _load_json(path: str) -> list:
         return json.load(f)
 
 
-if __name__ == "__main__":
-    parser = _build_cli_parser()
-    args   = parser.parse_args()
 
-    result = fuse_timeline(
-        scenes      = _load_json(args.scenes),
-        perception  = _load_json(args.perception),
-        asr         = _load_json(args.asr),
-        diarization = _load_json(args.diarization),
-        ocr         = _load_json(args.ocr),
+
+import os
+import sys
+import json
+import datetime
+from typing import Optional
+
+# Fix Windows console encoding
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# HELPERS
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _midpoint(start: float, end: float) -> float:
+    return (start + end) / 2.0
+
+
+def _find_scene_for_time(t: float, scenes: list) -> int:
+    """Return the scene_id whose [start_s, end_s] contains t. Falls back to 0."""
+    for scene in scenes:
+        if scene["start_s"] <= t < scene["end_s"]:
+            return scene["scene_id"]
+    # If t >= last scene end, assign to last scene
+    if scenes and t >= scenes[-1]["end_s"]:
+        return scenes[-1]["scene_id"]
+    return 0
+
+
+def _estimate_frame_timestamps(frame_count: int, duration_s: Optional[float]) -> list:
+    """
+    Estimate evenly-spaced timestamps for sampled frames when actual
+    per-frame timestamps are not available.
+    Returns list of float timestamps.
+    """
+    if not frame_count or not duration_s or duration_s <= 0:
+        return [0.0] * max(frame_count, 1)
+    interval = duration_s / frame_count
+    return [round(i * interval + interval / 2, 3) for i in range(frame_count)]
+
+
+def _build_scene_entry(scene: dict) -> dict:
+    """Build a blank fused timeline entry from a scene dict."""
+    return {
+        "scene_id":    scene["scene_id"],
+        "start_s":     scene["start_s"],
+        "end_s":       scene["end_s"],
+        "vl_description": None,
+        "asr_segments": [],
+        "asr_text":     "",
+        "acoustic_events": [],
+        "scene_tags":   [],
+    }
+
+
+def _tag_scene(entry: dict) -> None:
+    """Add semantic tags to a scene based on its content."""
+    tags = []
+    if entry["asr_text"].strip():
+        tags.append("speech_detected")
+    if entry["vl_description"]:
+        vl_lower = entry["vl_description"].lower()
+        if any(w in vl_lower for w in ["text", "sign", "license plate", "caption", "subtitle"]):
+            tags.append("text_on_screen")
+        if any(w in vl_lower for w in ["person", "people", "man", "woman", "crowd"]):
+            tags.append("persons_visible")
+        if any(w in vl_lower for w in ["vehicle", "car", "truck", "bus", "motorcycle"]):
+            tags.append("vehicles_visible")
+        if any(w in vl_lower for w in ["outdoor", "street", "road", "building", "sky"]):
+            tags.append("outdoor_scene")
+        if any(w in vl_lower for w in ["indoor", "room", "office", "interior"]):
+            tags.append("indoor_scene")
+    # Cyber-specific tags from acoustic events
+    for ev in entry.get("acoustic_events", []):
+        etype = ev.get("event_type", "")
+        tag_map = {
+            "gunshot": "gunshot_detected",
+            "explosion": "explosion_detected",
+            "scream": "scream_detected",
+            "alarm": "alarm_detected",
+            "siren": "siren_detected",
+            "glass_break": "glass_break_detected",
+            "fire": "fire_detected",
+        }
+        tag = tag_map.get(etype)
+        if tag and tag not in tags:
+            tags.append(tag)
+    entry["scene_tags"] = tags
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CORE FUSION FUNCTION
+# ─────────────────────────────────────────────────────────────────────────────
+
+def fuse_pipeline_outputs(
+    scenes: list,
+    asr_result: Optional[dict] = None,
+    vl_output: Optional[str] = None,
+    vl_frame_timestamps: Optional[list] = None,
+    metadata: Optional[dict] = None,
+    source_type: str = "local_video",
+    source_uri: str = "",
+    deepfake_flag: bool = False,
+    ai_generated_flag: bool = False,
+    mode: str = "general",
+    acoustic_result: Optional[dict] = None,
+    geo_result: Optional[dict] = None,
+    face_reid_result: Optional[dict] = None,
+    alert_result: Optional[dict] = None,
+) -> dict:
+    """
+    Merge all agent outputs into one unified fused timeline.
+
+    Parameters
+    ----------
+    scenes               : Scene list from scene_segmentation (required).
+    asr_result           : Full result dict from asr_agent.transcribe_video().
+                           Pass None if audio transcription was skipped.
+    vl_output            : Raw text output from run_vl_agent.run_vision_analysis().
+                           This is a single string describing all frames together.
+    vl_frame_timestamps  : List of float timestamps (one per extracted frame).
+                           If None, timestamps are estimated from duration.
+    metadata             : The payload.metadata dict (resolution, fps, duration, etc.)
+    source_type          : "local_video" | "youtube" | "live_rtsp" | "local_image"
+    source_uri           : Original source URI/path for audit trail.
+    deepfake_flag        : True if manipulation_detection flagged the video.
+    ai_generated_flag    : True if AI generation detection flagged the video.
+    mode                 : "general" | "cyber"
+    acoustic_result      : Result dict from acoustic_event_detection (cyber mode).
+    geo_result           : Result dict from geo_estimation_agent (cyber mode).
+    face_reid_result     : Result dict from face_reid_agent (cyber mode).
+    alert_result         : Result dict from alert_system (cyber mode).
+
+    Returns
+    -------
+    Fused timeline dict (see module docstring for schema).
+    """
+    fused_at = datetime.datetime.utcnow().isoformat() + "Z"
+    metadata = metadata or {}
+
+    # ── Guard: need at least one scene ────────────────────────────────────
+    if not scenes:
+        # Synthesise a single all-covering scene
+        duration = metadata.get("video_duration_seconds") or metadata.get("duration_s")
+        scenes = [{"scene_id": 0, "start_s": 0.0, "end_s": float(duration or 0.0)}]
+        print("  [Fusion Agent] ⚠️  No scenes provided — using single fallback scene.", flush=True)
+
+    print(f"  [Fusion Agent] Merging {len(scenes)} scene(s)…", flush=True)
+
+    # ── Build scene index ──────────────────────────────────────────────────
+    fused: list = [_build_scene_entry(s) for s in scenes]
+    scene_map: dict = {entry["scene_id"]: entry for entry in fused}
+
+    # ── Slot ASR segments ──────────────────────────────────────────────────
+    asr_segments = []
+    asr_language = None
+    asr_lang_conf = None
+    full_transcript = ""
+
+    if asr_result and not asr_result.get("error"):
+        asr_segments = asr_result.get("segments", [])
+        asr_language = asr_result.get("language")
+        asr_lang_conf = asr_result.get("language_confidence")
+        full_transcript = asr_result.get("full_transcript", "")
+
+        for seg in asr_segments:
+            mid = _midpoint(seg["start_s"], seg["end_s"])
+            sid = _find_scene_for_time(mid, scenes)
+            if sid in scene_map:
+                scene_map[sid]["asr_segments"].append(seg)
+
+        # Build per-scene ASR text
+        for entry in fused:
+            entry["asr_text"] = " ".join(s["text"] for s in entry["asr_segments"]).strip()
+
+        print(f"  [Fusion Agent] ✅ Slotted {len(asr_segments)} ASR segments.", flush=True)
+    else:
+        if asr_result and asr_result.get("error"):
+            print(f"  [Fusion Agent] ⚠️  ASR skipped (error): {asr_result['error']}", flush=True)
+        else:
+            print("  [Fusion Agent] ℹ️  No ASR result — timeline will have no speech data.", flush=True)
+
+    # ── Slot VL output ─────────────────────────────────────────────────────
+    # VL output is a single long string describing all frames.
+    # We distribute it:
+    #   - If only 1 scene → assign whole output to that scene.
+    #   - If multiple scenes → split roughly by paragraph/sentence, assign first
+    #     paragraph to scene 0, rest distributed evenly. This is a best-effort
+    #     heuristic; the full text is always available in full_vl_output.
+    full_vl_output = None
+    if vl_output and vl_output.strip():
+        full_vl_output = vl_output.strip()
+        if len(fused) == 1:
+            fused[0]["vl_description"] = full_vl_output
+        else:
+            # Split on double newlines (paragraphs) and distribute
+            paragraphs = [p.strip() for p in full_vl_output.split("\n\n") if p.strip()]
+            if len(paragraphs) >= len(fused):
+                # Assign one paragraph per scene
+                for i, entry in enumerate(fused):
+                    entry["vl_description"] = paragraphs[i]
+            else:
+                # Assign all to scene 0, leave others with shared reference
+                fused[0]["vl_description"] = full_vl_output
+                for entry in fused[1:]:
+                    entry["vl_description"] = f"[See scene 0 for full analysis]"
+
+        print(f"  [Fusion Agent] ✅ VL output distributed across {len(fused)} scene(s).", flush=True)
+    else:
+        print("  [Fusion Agent] ℹ️  No VL output — timeline will have no visual descriptions.", flush=True)
+
+    # ── Slot acoustic events (cyber mode) ─────────────────────────────────
+    acoustic_events_total = 0
+    if acoustic_result and not acoustic_result.get("error"):
+        ac_events = acoustic_result.get("events", [])
+        acoustic_events_total = len(ac_events)
+        for ev in ac_events:
+            mid = _midpoint(ev["start_s"], ev["end_s"])
+            sid = _find_scene_for_time(mid, scenes)
+            if sid in scene_map:
+                scene_map[sid]["acoustic_events"].append(ev)
+        if ac_events:
+            print(f"  [Fusion Agent] ✅ Slotted {len(ac_events)} acoustic event(s).", flush=True)
+    elif acoustic_result and acoustic_result.get("error"):
+        print(f"  [Fusion Agent] ⚠️  Acoustic skipped (error): {acoustic_result['error']}", flush=True)
+
+    # ── Tag every scene ────────────────────────────────────────────────────
+    for entry in fused:
+        _tag_scene(entry)
+
+    # ── Build summary ─────────────────────────────────────────────────────
+    total_words = sum(len(e["asr_text"].split()) for e in fused)
+    duration_s = (
+        metadata.get("video_duration_seconds")
+        or (fused[-1]["end_s"] if fused else None)
     )
-    print(json.dumps(result, indent=2 if args.pretty else None))
-    sys.exit(0)
 
+    summary = {
+        "total_scenes": len(fused),
+        "total_asr_segments": len(asr_segments),
+        "total_words": total_words,
+        "has_speech": bool(asr_segments),
+        "has_vl_output": bool(full_vl_output),
+        "language": asr_language,
+        "language_confidence": asr_lang_conf,
+        "duration_s": duration_s,
+        "mode": mode,
+        "deepfake_flag": deepfake_flag,
+        "ai_generated_flag": ai_generated_flag,
+    }
+
+    # ── Cyber summary (cyber mode only) ───────────────────────────────────
+    cyber_summary = None
+    if mode == "cyber":
+        geo_gps = None
+        if geo_result and geo_result.get("gps"):
+            geo_gps = geo_result["gps"]
+        identities_count = 0
+        if face_reid_result and face_reid_result.get("identities"):
+            identities_count = len(face_reid_result["identities"])
+        alerts_count = 0
+        highest_alert = None
+        if alert_result:
+            alerts_count = alert_result.get("total_alerts", 0)
+            highest_alert = alert_result.get("highest_severity")
+
+        cyber_summary = {
+            "acoustic_events_total": acoustic_events_total,
+            "geo_estimate": geo_gps,
+            "geo_status": (geo_result or {}).get("status", "unavailable"),
+            "identities_detected": identities_count,
+            "faces_total": (face_reid_result or {}).get("faces_detected", 0),
+            "face_reid_status": (face_reid_result or {}).get("status", "unavailable"),
+            "alerts_triggered": alerts_count,
+            "highest_alert_severity": highest_alert,
+        }
+        print(
+            f"  [Fusion Agent] ✅ Cyber summary — "
+            f"{acoustic_events_total} acoustic, geo={geo_gps is not None}, "
+            f"{identities_count} identities, {alerts_count} alerts.",
+            flush=True,
+        )
+
+    print(
+        f"  [Fusion Agent] ✅ Fusion complete — "
+        f"{len(fused)} scenes, {len(asr_segments)} ASR segs, "
+        f"{total_words} words.",
+        flush=True
+    )
+
+    result = {
+        "fused_timeline": fused,
+        "full_vl_output": full_vl_output,
+        "full_transcript": full_transcript,
+        "summary": summary,
+        "metadata": metadata,
+        "deepfake_flag": deepfake_flag,
+        "ai_generated_flag": ai_generated_flag,
+        "source_type": source_type,
+        "source_uri": source_uri,
+        "fused_at": fused_at,
+        "error": None,
+    }
+    if cyber_summary:
+        result["cyber_summary"] = cyber_summary
+        # Pass through full cyber result dicts for downstream LLM consumption
+        result["geo_result"] = geo_result
+        result["acoustic_result"] = acoustic_result
+        result["face_reid_result"] = face_reid_result
+        result["alert_result"] = alert_result
+    return result
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CONVENIENCE: fuse from ChorusPayload directly
+# ─────────────────────────────────────────────────────────────────────────────
+
+def fuse_from_payload(
+    payload,               # ChorusPayload instance
+    scenes: list,
+    asr_result: Optional[dict] = None,
+    vl_output: Optional[str] = None,
+    mode: str = "general",
+    acoustic_result: Optional[dict] = None,
+    geo_result: Optional[dict] = None,
+    face_reid_result: Optional[dict] = None,
+    alert_result: Optional[dict] = None,
+) -> dict:
+    """
+    Convenience wrapper: builds fuse_pipeline_outputs call from a ChorusPayload.
+
+    Parameters
+    ----------
+    payload    : ChorusPayload from chorus_input.py
+    scenes     : Scene list from scene_segmentation.detect_scenes()
+    asr_result : Result dict from asr_agent.transcribe_video()
+    vl_output  : Text output from run_vl_agent.run_vision_analysis()
+    mode       : "general" | "cyber"
+    acoustic_result  : Result dict from acoustic_event_detection (cyber mode).
+    geo_result       : Result dict from geo_estimation_agent (cyber mode).
+    face_reid_result : Result dict from face_reid_agent (cyber mode).
+    alert_result     : Result dict from alert_system (cyber mode).
+    """
+    duration = payload.metadata.get("video_duration_seconds")
+    frame_count = len(payload.frames)
+    frame_timestamps = _estimate_frame_timestamps(frame_count, duration)
+
+    return fuse_pipeline_outputs(
+        scenes=scenes,
+        asr_result=asr_result,
+        vl_output=vl_output,
+        vl_frame_timestamps=frame_timestamps,
+        metadata=payload.metadata,
+        source_type=payload.source_type,
+        source_uri=payload.source_uri,
+        deepfake_flag=getattr(payload, "deepfake_flag", False),
+        ai_generated_flag=getattr(payload, "ai_generated_flag", False),
+        mode=mode,
+        acoustic_result=acoustic_result,
+        geo_result=geo_result,
+        face_reid_result=face_reid_result,
+        alert_result=alert_result,
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CLI ENTRY POINT — for testing with pre-generated JSON files
+# ─────────────────────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    import argparse
+
+    p = argparse.ArgumentParser(
+        description="Chorus Fusion Agent — Merge pipeline outputs into one timeline."
+    )
+    p.add_argument("--scenes",   required=True, help="Path to scene_segmentation JSON output.")
+    p.add_argument("--asr",      default=None,  help="Path to asr_agent JSON output.")
+    p.add_argument("--vl",       default=None,  help="Path to vl_output.txt from run_vl_agent.")
+    p.add_argument("--acoustic", default=None,  help="Path to acoustic_event_detection JSON (cyber).")
+    p.add_argument("--geo",      default=None,  help="Path to geo_estimation_agent JSON (cyber).")
+    p.add_argument("--face-reid", default=None, dest="face_reid",
+                   help="Path to face_reid_agent JSON (cyber).")
+    p.add_argument("--alerts",   default=None,  help="Path to alert_system JSON (cyber).")
+    p.add_argument("--output",   default=None,  help="Save fused JSON to this path.")
+    p.add_argument("--mode",     default="general", choices=["general", "cyber"])
+    p.add_argument("--pretty",   action="store_true")
+    args = p.parse_args()
+
+    with open(args.scenes, encoding="utf-8") as f:
+        scenes_data = json.load(f)
+    scenes_list = scenes_data.get("scenes", scenes_data)
+
+    asr_data = None
+    if args.asr and os.path.exists(args.asr):
+        with open(args.asr, encoding="utf-8") as f:
+            asr_data = json.load(f)
+
+    vl_text = None
+    if args.vl and os.path.exists(args.vl):
+        with open(args.vl, encoding="utf-8") as f:
+            vl_text = f.read()
+
+    acoustic_data = None
+    if args.acoustic and os.path.exists(args.acoustic):
+        with open(args.acoustic, encoding="utf-8") as f:
+            acoustic_data = json.load(f)
+
+    geo_data = None
+    if args.geo and os.path.exists(args.geo):
+        with open(args.geo, encoding="utf-8") as f:
+            geo_data = json.load(f)
+
+    face_reid_data = None
+    if args.face_reid and os.path.exists(args.face_reid):
+        with open(args.face_reid, encoding="utf-8") as f:
+            face_reid_data = json.load(f)
+
+    alert_data = None
+    if args.alerts and os.path.exists(args.alerts):
+        with open(args.alerts, encoding="utf-8") as f:
+            alert_data = json.load(f)
+
+    result = fuse_pipeline_outputs(
+        scenes=scenes_list,
+        asr_result=asr_data,
+        vl_output=vl_text,
+        mode=args.mode,
+        acoustic_result=acoustic_data,
+        geo_result=geo_data,
+        face_reid_result=face_reid_data,
+        alert_result=alert_data,
+    )
+
+    out = json.dumps(result, indent=2 if args.pretty else None, ensure_ascii=False)
+    print(out)
+
+    if args.output:
+        with open(args.output, "w", encoding="utf-8") as f:
+            f.write(out)
+        print(f"\n  [Fusion Agent] Saved to: {args.output}", flush=True)

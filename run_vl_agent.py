@@ -43,6 +43,21 @@ def load_vl_model():
     print("  [VL Agent] Qwen2.5-VL Vision Model loaded successfully!")
     return _model, _processor
 
+
+def unload_vl_model():
+    """Release the VL Vision Brain model from VRAM/CPU memory."""
+    global _model, _processor
+    if _model is not None:
+        try:
+            del _model
+        except Exception:
+            pass
+        _model = None
+        _processor = None
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        print("  [VL Agent] Vision model unloaded from memory.", flush=True)
+
 def run_vision_analysis(frames, user_prompt, metadata):
     """
     Takes a list of PIL Images (frames), passes them to Qwen2.5-VL,

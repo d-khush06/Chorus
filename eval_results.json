@@ -1,0 +1,218 @@
+[
+  {
+    "id": "T01_happy_path",
+    "pass": true,
+    "json_valid": true,
+    "mode_correct": true,
+    "include_results": [
+      [
+        "source_adapters",
+        true
+      ],
+      [
+        "quality_gate",
+        true
+      ],
+      [
+        "dedup_check",
+        true
+      ],
+      [
+        "manipulation_detection",
+        true
+      ],
+      [
+        "scene_segmentation",
+        true
+      ]
+    ],
+    "exclude_results": [
+      [
+        "geo_estimation_agent",
+        true
+      ],
+      [
+        "face_reid_agent",
+        true
+      ]
+    ],
+    "raw_output": "{\"mode\": \"general\", \"tool_calls\": [{\"step\": 1, \"tool\": \"source_adapters\"}, {\"step\": 2, \"tool\": \"quality_gate\"}, {\"step\": 3, \"tool\": \"dedup_check\"}, {\"step\": 4, \"tool\": \"manipulation_detection\"}, {\"step\": 5, \"tool\": \"scene_segmentation\"}], \"excluded\": [\"geo_estimation_agent\", \"face_reid_agent\"], \"rea"
+  },
+  {
+    "id": "T02_duplicate_halt",
+    "pass": true,
+    "json_valid": true,
+    "mode_correct": true,
+    "include_results": [
+      [
+        "source_adapters",
+        true
+      ],
+      [
+        "dedup_check",
+        true
+      ]
+    ],
+    "exclude_results": [
+      [
+        "quality_gate",
+        true
+      ],
+      [
+        "manipulation_detection",
+        true
+      ],
+      [
+        "scene_segmentation",
+        true
+      ],
+      [
+        "perception_agent",
+        true
+      ],
+      [
+        "domain_output",
+        true
+      ]
+    ],
+    "raw_output": "{\"mode\": \"general\", \"tool_calls\": [{\"step\": 1, \"tool\": \"source_adapters\"}, {\"step\": 2, \"tool\": \"dedup_check\"}], \"excluded\": [\"quality_gate\", \"manipulation_detection\", \"scene_segmentation\", \"perception_agent\", \"domain_output\"], \"reasoning_summary\": \"Selected: ['source_adapters', 'dedup_check']. Exclu"
+  },
+  {
+    "id": "T03_quality_fail",
+    "pass": true,
+    "json_valid": true,
+    "mode_correct": true,
+    "include_results": [
+      [
+        "source_adapters",
+        true
+      ],
+      [
+        "dedup_check",
+        true
+      ],
+      [
+        "quality_gate",
+        true
+      ]
+    ],
+    "exclude_results": [
+      [
+        "manipulation_detection",
+        true
+      ],
+      [
+        "scene_segmentation",
+        true
+      ],
+      [
+        "perception_agent",
+        true
+      ],
+      [
+        "domain_output",
+        true
+      ]
+    ],
+    "raw_output": "{\"mode\": \"general\", \"tool_calls\": [{\"step\": 1, \"tool\": \"source_adapters\"}, {\"step\": 2, \"tool\": \"dedup_check\"}, {\"step\": 1, \"tool\": \"quality_gate\"}], \"excluded\": [\"manipulation_detection\", \"scene_segmentation\", \"perception_agent\", \"domain_output\"], \"reasoning_summary\": \"Selected: ['source_adapters', "
+  },
+  {
+    "id": "T04_cyber_mode",
+    "pass": true,
+    "json_valid": true,
+    "mode_correct": true,
+    "include_results": [
+      [
+        "geo_estimation_agent",
+        true
+      ],
+      [
+        "face_reid_agent",
+        true
+      ],
+      [
+        "manipulation_detection",
+        true
+      ]
+    ],
+    "exclude_results": [
+      [
+        "chapter_highlight_detection",
+        true
+      ],
+      [
+        "audio_description_agent",
+        true
+      ]
+    ],
+    "raw_output": "{\"mode\": \"cyber\", \"tool_calls\": [{\"step\": 1, \"tool\": \"geo_estimation_agent\"}, {\"step\": 2, \"tool\": \"face_reid_agent\"}, {\"step\": 3, \"tool\": \"manipulation_detection\"}], \"excluded\": [\"chapter_highlight_detection\", \"audio_description_agent\"], \"reasoning_summary\": \"Selected: ['geo_estimation_agent', 'face"
+  },
+  {
+    "id": "T05_no_governance",
+    "pass": false,
+    "json_valid": true,
+    "mode_correct": false,
+    "include_results": [
+      [
+        "geo_estimation_agent",
+        true
+      ]
+    ],
+    "exclude_results": [
+      [
+        "face_reid_agent",
+        false
+      ]
+    ],
+    "raw_output": "{\"mode\": \"general\", \"tool_calls\": [{\"step\": 1, \"tool\": \"geo_estimation_agent\"}, {\"step\": 2, \"tool\": \"face_reid_agent\"}], \"excluded\": [\"face_reid_agent\"], \"reasoning_summary\": \"Selected: ['geo_estimation_agent', 'face_reid_agent']. Excluded: ['face_reid_agent']. Order follows dependency chain.\"}"
+  },
+  {
+    "id": "T06_rtsp_no_dedup",
+    "pass": true,
+    "json_valid": true,
+    "mode_correct": true,
+    "include_results": [
+      [
+        "source_adapters",
+        true
+      ],
+      [
+        "quality_gate",
+        true
+      ],
+      [
+        "scene_segmentation",
+        true
+      ]
+    ],
+    "exclude_results": [
+      [
+        "dedup_check",
+        true
+      ]
+    ],
+    "raw_output": "{\"mode\": \"general\", \"tool_calls\": [{\"step\": 1, \"tool\": \"source_adapters\"}, {\"step\": 2, \"tool\": \"quality_gate\"}, {\"step\": 3, \"tool\": \"scene_segmentation\"}], \"excluded\": [\"dedup_check\"], \"reasoning_summary\": \"Selected agents: ['source_adapters', 'quality_gate', 'scene_segmentation']. Excluded: ['dedup"
+  },
+  {
+    "id": "T07_manipulation_flagged",
+    "pass": true,
+    "json_valid": true,
+    "mode_correct": true,
+    "include_results": [
+      [
+        "manipulation_detection",
+        true
+      ],
+      [
+        "project_manager",
+        true
+      ],
+      [
+        "review_queue",
+        true
+      ]
+    ],
+    "exclude_results": [],
+    "raw_output": "{\"mode\": \"general\", \"tool_calls\": [{\"step\": 1, \"tool\": \"manipulation_detection\"}, {\"step\": 2, \"tool\": \"project_manager\"}, {\"step\": 3, \"tool\": \"review_queue\"}], \"excluded\": [], \"reasoning_summary\": \"Selected agents: ['manipulation_detection', 'project_manager', 'review_queue']. Excluded: []. Order fo"
+  }
+]

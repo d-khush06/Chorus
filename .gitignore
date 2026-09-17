@@ -1,6 +1,7 @@
 # Ignore large AI model files & weights
 /models/
-orchestrator_lora/
+orchestrator_lora*/
+unsloth_compiled_cache/
 datasets/
 *.safetensors
 *.bin
