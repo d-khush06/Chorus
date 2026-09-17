@@ -1,0 +1,120 @@
+/* App.css — Main pane and global layout chrome */
+
+/* ── Main Pane ── */
+.main-pane {
+  grid-area: main;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bg);
+  min-width: 0;
+}
+
+/* Main pane top header bar */
+.main-pane__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-5);
+  height: 48px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.main-pane__case-id {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.main-pane__case-id .mono {
+  font-size: 12px;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.main-pane__header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+/* Conflict count badge in header */
+.conflict-count-badge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--red);
+  padding: 2px 8px;
+  border-radius: 3px;
+  background: rgba(229, 72, 77, 0.10);
+  border: 1px solid rgba(229, 72, 77, 0.20);
+}
+
+/* Manifest drawer toggle button */
+.manifest-drawer-toggle {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-3);
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.manifest-drawer-toggle:hover {
+  color: var(--text-1);
+  border-color: var(--text-3);
+}
+
+/* ── Analytics Platform nav button ── */
+.analytics-nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--sans-font);
+  letter-spacing: 0.04em;
+  color: #a5b4fc;
+  padding: 5px 12px;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: var(--radius-md);
+  background: rgba(99, 102, 241, 0.08);
+  cursor: pointer;
+  transition: all 150ms ease;
+  white-space: nowrap;
+}
+
+.analytics-nav-btn:hover {
+  background: rgba(99, 102, 241, 0.16);
+  border-color: rgba(99, 102, 241, 0.5);
+  color: #c7d2fe;
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.2);
+}
+
+/* ── Timeline Event List ── */
+.timeline-list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.timeline-list__loading,
+.timeline-list__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 120px;
+  font-size: 12px;
+}

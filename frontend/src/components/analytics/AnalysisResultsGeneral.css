@@ -1,0 +1,285 @@
+/* ═══════════════════════════════════════════════
+   General Mode Results — Premium Redesign
+   ═══════════════════════════════════════════════ */
+
+.gres {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 100%;
+}
+
+/* ── Stats overview row ── */
+.gres-overview {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 900px) {
+  .gres-overview { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 580px) {
+  .gres-overview { grid-template-columns: repeat(2, 1fr); }
+}
+
+.gres-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  align-items: flex-start;
+  text-align: left;
+}
+.gres-stat-card:hover {
+  background: rgba(124, 58, 237, 0.1);
+  border-color: rgba(124, 58, 237, 0.25);
+}
+
+.gres-stat-label {
+  font-size: 9px;
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.3);
+  line-height: 1;
+}
+
+.gres-stat-value {
+  font-size: 1.65rem;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.88);
+  font-family: 'Space Grotesk', 'Inter', sans-serif;
+  line-height: 1;
+}
+
+.gres-stat-value--highlight { color: #a5b4fc; }
+.gres-stat-value--engage    { color: #34d399; }
+
+/* ── Card grid ── */
+.gres-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+@media (max-width: 760px) {
+  .gres-grid { grid-template-columns: 1fr; }
+}
+
+.gres-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.gres-card--wide {
+  grid-column: 1 / -1;
+}
+
+.gres-card__title {
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-family: 'JetBrains Mono', monospace;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* ── Scene breakdown ── */
+.gres-scenes {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.gres-scene {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  transition: background 0.2s;
+}
+.gres-scene:hover { background: rgba(255, 255, 255, 0.04); }
+
+.gres-scene__thumb {
+  width: 48px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px solid;
+  font-size: 18px;
+}
+
+.gres-scene__info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.gres-scene__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.82);
+  font-family: 'Inter', sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gres-scene__time {
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  color: rgba(255, 255, 255, 0.28);
+}
+
+.gres-scene__conf {
+  font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  color: rgba(255, 255, 255, 0.38);
+  flex-shrink: 0;
+  width: 36px;
+  text-align: right;
+}
+
+/* Confidence bar */
+.gres-confbar {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.gres-confbar__fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 1.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ── Sentiment ── */
+.gres-sentiment-arc {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.gres-sentiment-svg {
+  width: 100%;
+  max-width: 210px;
+}
+.gres-sentiment-legend {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: 'Inter', sans-serif;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.gres-sent-dot {
+  display: inline-block;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Object detection ── */
+.gres-objects {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+.gres-object-row {
+  display: grid;
+  grid-template-columns: 90px auto 1fr 36px;
+  align-items: center;
+  gap: 10px;
+}
+.gres-object-label {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.78);
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+}
+.gres-object-count {
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  color: rgba(255, 255, 255, 0.3);
+  white-space: nowrap;
+}
+.gres-object-conf {
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: rgba(255, 255, 255, 0.38);
+  text-align: right;
+}
+
+/* ── Keywords ── */
+.gres-keywords {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.gres-keyword {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: rgba(255,255,255,0.7);
+  padding: 4px 10px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ── Transcript ── */
+.gres-transcript {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+.gres-transcript::-webkit-scrollbar { width: 3px; }
+.gres-transcript::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 2px; }
+
+.gres-transcript-seg {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.02);
+  border-left: 2px solid rgba(124,58,237,0.25);
+}
+.gres-transcript-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #818cf8;
+  flex-shrink: 0;
+  padding-top: 1px;
+  min-width: 36px;
+}
+.gres-transcript-text {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.68);
+  font-family: 'Inter', sans-serif;
+  line-height: 1.65;
+}
