@@ -669,7 +669,7 @@ def extract_video_key_features(
 
                 # Determine target timestamps for keyframes based on detected scenes
                 target_timestamps = []  # List[Tuple[float, str]]
-                if scenes and len(scenes) > 0:
+                if scenes and len(scenes) >= 4:
                     for s in scenes:
                         s_id = s.get("scene_id", 0)
                         start = s.get("start_seconds", 0.0)
@@ -682,8 +682,8 @@ def extract_video_key_features(
                         step = len(target_timestamps) / float(max_keyframes)
                         target_timestamps = [target_timestamps[int(i * step)] for i in range(max_keyframes)]
                 else:
-                    # Uniform sampling across duration
-                    n_k = max(4, min(max_keyframes, int(dur / 2.0) if dur > 0 else 4))
+                    # Uniform sampling across duration (at least 6-8 keyframes so VL model perceives full visual progression)
+                    n_k = max(6, min(max_keyframes, int(dur / 2.5) if dur > 0 else 6))
                     for i in range(n_k):
                         t_sec = round((i / max(n_k - 1, 1)) * max(dur - 0.5, 0.0), 2)
                         target_timestamps.append((t_sec, f"Point {i+1}"))

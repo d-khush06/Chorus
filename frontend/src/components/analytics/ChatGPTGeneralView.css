@@ -378,41 +378,7 @@ body {
   color: #60a5fa;
 }
 
-/* Pipeline Quality Gate Status Indicator */
-.cpt-sidebar-status {
-  padding: 8px 12px;
-  margin: 4px 12px 10px;
-  background: #08080a;
-  border: 1px solid #16161a;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 11px;
-  color: #8a8f9d;
-  user-select: none;
-}
 
-.cpt-status-left {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.cpt-status-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #10b981;
-  box-shadow: 0 0 6px rgba(16, 185, 129, 0.7);
-  display: inline-block;
-}
-
-.cpt-status-tsa {
-  font-size: 10px;
-  color: #52525b;
-  font-family: monospace;
-}
 
 /* Sidebar Footer / User Profile & Popover */
 .cpt-sidebar-footer {
@@ -691,15 +657,15 @@ body {
 }
 
 .cpt-toggle-btn.active {
-  background: #232836;
+  background: #1c202a;
   color: #ffffff;
-  border-color: #343c50;
+  border-color: #2b3242;
 }
 
 .cpt-toggle-btn.active-cyber {
-  background: #7f1d1d;
-  color: #ffffff;
-  border-color: #991b1b;
+  background: #241618;
+  color: #fca5a5;
+  border-color: #402326;
 }
 
 .cpt-topbar-right {
@@ -727,11 +693,10 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   width: 100%;
-  padding: 20px;
+  padding: 100px 20px 40px;
   box-sizing: border-box;
-  margin-top: -30px;
 }
 
 .cpt-greeting {
@@ -823,11 +788,12 @@ body {
   position: relative;
   background: #1b1d24;
   border: 1px solid #2b2f3d;
-  border-radius: 9999px;
+  border-radius: 24px;
   box-shadow: 0 10px 32px rgba(0, 0, 0, 0.45);
-  padding: 6px 10px 6px 14px;
+  padding: 6px 12px 6px 14px;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
   transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
 
@@ -881,7 +847,7 @@ body {
 .cpt-input-box {
   display: flex;
   align-items: center;
-  min-height: 44px;
+  min-height: 42px;
 }
 
 .cpt-attach-btn {
@@ -910,12 +876,16 @@ body {
   background: transparent;
   border: none;
   color: #ffffff;
-  font-size: 15.5px;
+  font-size: 15px;
   resize: none;
   padding: 8px 10px;
+  min-height: 38px;
   max-height: 180px;
   font-family: inherit;
   line-height: 1.45;
+  box-sizing: border-box;
+  overflow-y: auto;
+  outline: none;
 }
 
 .cpt-textarea:focus {
@@ -1278,6 +1248,68 @@ body {
   font-size: 18px;
   font-weight: 600;
   color: #ffffff;
+}
+
+/* ──────────────── FORMATTED MESSAGE & OVERVIEW ──────────────── */
+.cpt-overview-container {
+  margin: 4px 0 16px;
+}
+
+.cpt-formatted-content {
+  font-size: 14px;
+  line-height: 1.65;
+  color: #e4e4e7;
+}
+
+.cpt-overview-block {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.cpt-content-paragraph {
+  margin: 0 0 10px;
+  color: #d4d4d8;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.cpt-content-paragraph:last-child {
+  margin-bottom: 0;
+}
+
+.cpt-content-section-title {
+  margin: 14px 0 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #60a5fa;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+}
+
+.cpt-content-list {
+  margin: 4px 0 12px 18px;
+  padding: 0;
+  list-style-type: disc;
+  color: #d4d4d8;
+}
+
+.cpt-content-list-item {
+  margin-bottom: 6px;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.cpt-inline-bold {
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.cpt-inline-em {
+  font-style: italic;
+  color: #a1a1aa;
 }
 
 .cpt-takeaways-grid {
@@ -1793,4 +1825,189 @@ body {
   align-items: center;
   gap: 8px;
   margin-bottom: 4px;
+}
+
+/* ─── RTSP & Live Stream Forensic Styles ─── */
+.cpt-rtsp-btn {
+  color: #71717a;
+  transition: all 0.15s ease;
+}
+
+.cpt-rtsp-btn:hover,
+.cpt-rtsp-btn.active {
+  color: #22c55e;
+  background: #111a14;
+}
+
+.cpt-file-chip.live-chip {
+  background: #0f1712;
+  border: 1px solid #1c2b21;
+  color: #86efac;
+}
+
+.cpt-file-chip.live-chip .cpt-file-icon {
+  color: #22c55e;
+}
+
+.cpt-msg-attachment-badge.live-badge {
+  background: #0f1712;
+  border-color: #1c2b21;
+  color: #86efac;
+}
+
+.cpt-msg-attachment-badge.yt-badge {
+  background: #181414;
+  border-color: #301f1f;
+  color: #fca5a5;
+}
+
+/* Live Stream Header */
+.cpt-livestream-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #1a1a20;
+}
+
+.cpt-livestream-title-area {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cpt-livestream-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #0c1410;
+  border: 1px solid #16261c;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #4ade80;
+  width: fit-content;
+}
+
+.cpt-stream-proto {
+  font-size: 10px;
+  color: #6b7280;
+  margin-left: 4px;
+  font-family: monospace;
+}
+
+.cpt-live-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 6px #22c55e;
+  animation: livePulse 1.5s infinite;
+}
+
+.cpt-live-pulse-dot.paused {
+  background: #eab308;
+  box-shadow: 0 0 6px #eab308;
+  animation: none;
+}
+
+@keyframes livePulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.cpt-livestream-url {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  color: #f4f4f5;
+  font-family: monospace;
+  letter-spacing: -0.2px;
+}
+
+/* Telemetry Grid */
+.cpt-telemetry-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.cpt-telemetry-box {
+  background: #0d0e13;
+  border: 1px solid #181a24;
+  border-radius: 6px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cpt-telemetry-lbl {
+  font-size: 10.5px;
+  color: #71717a;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.cpt-telemetry-val {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #e4e4e7;
+  font-family: monospace;
+}
+
+.cpt-telemetry-val.highlight {
+  color: #22c55e;
+}
+
+/* Sliding Buffer Bar */
+.cpt-live-buffer-bar {
+  background: #0d0e13;
+  border: 1px solid #181a24;
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 16px;
+}
+
+.cpt-live-buffer-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #8e8e93;
+  margin-bottom: 6px;
+  font-family: monospace;
+}
+
+.cpt-live-buffer-track {
+  width: 100%;
+  height: 4px;
+  background: #18181b;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.cpt-live-buffer-fill {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #166534, #22c55e);
+  border-radius: 2px;
+  animation: bufferPulse 2s ease-in-out infinite;
+}
+
+.cpt-live-buffer-fill.paused {
+  background: #ca8a04;
+  animation: none;
+}
+
+@keyframes bufferPulse {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
+}
+
+.live-check-card {
+  border-left: 2px solid #22c55e;
 }

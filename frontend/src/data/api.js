@@ -109,13 +109,14 @@ export async function verifyIntegrity(caseId) {
  * @param {string} param0.url
  * @returns {Promise<{ success: boolean, result?: Object, steps?: Array, error?: string, case_id?: string }>}
  */
-export async function analyzeVideo({ videoFile, prompt, mode = 'general', url = '', max_playlist_videos, batch_size, max_videos }) {
+export async function analyzeVideo({ videoFile, prompt, mode = 'general', model = 'flash', url = '', max_playlist_videos, batch_size, max_videos }) {
   const formData = new FormData();
   if (videoFile) {
     formData.append('video', videoFile);
   }
   formData.append('prompt', prompt || '');
   formData.append('mode', mode);
+  formData.append('model', model);
   if (url) {
     formData.append('url', url);
   }
@@ -138,6 +139,26 @@ export async function analyzeVideo({ videoFile, prompt, mode = 'general', url = 
   const data = await res.json();
   if (!res.ok || !data.success) {
     throw new Error(data.error || 'Video analysis request failed');
+  }
+  return data;
+}
+
+/**
+ * Follow-up interactive chat about an analyzed video.
+ */
+export async function chatAboutVideo({ question, videoContext, model = 'flash', caseId = null }) {
+  const res = await fetch(`${API_BASE}/api/analyze/chat`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders()
+    },
+    body: JSON.stringify({ question, videoContext, model, caseId })
+  });
+
+  const data = await res.json();
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || 'Chat request failed');
   }
   return data;
 }

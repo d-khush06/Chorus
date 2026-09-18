@@ -1,107 +1,149 @@
 import React, { useState } from 'react';
-import { X, HelpCircle, BookOpen, Command, LifeBuoy, ShieldCheck, ExternalLink } from 'lucide-react';
 import './UserMenuModals.css';
 
+const SHORTCUTS = [
+  { action: 'Start new session', keys: 'Ctrl + N' },
+  { action: 'Search / focus input', keys: 'Ctrl + K' },
+  { action: 'Toggle sidebar', keys: 'Ctrl + B' },
+  { action: 'Switch to Flash model', keys: '/flash' },
+  { action: 'Switch to Deepthink model', keys: '/deepthink' },
+  { action: 'Pause or resume live stream', keys: 'Space' },
+  { action: 'Close dialog or popover', keys: 'Esc' }
+];
+
+const FAQS = [
+  {
+    q: 'How do I connect an RTSP stream?',
+    a: 'Switch to Cyber Mode, click the stream button next to the input, and enter your rtsp:// URL, port (default 554), and optional camera credentials.'
+  },
+  {
+    q: 'What is the difference between General Mode and Cyber Mode?',
+    a: 'General Mode is designed for video summarization, chapter breakdowns, and YouTube analysis. Cyber Mode is built for tamper detection, frame splice audits, and live stream telemetry.'
+  },
+  {
+    q: 'What is the difference between Chorus Flash and Chorus Deepthink?',
+    a: 'Chorus Flash provides fast responses (~800ms) for direct queries. Chorus Deepthink performs multi-step reasoning (~2400ms) with detailed analysis steps.'
+  },
+  {
+    q: 'How do I analyze a YouTube video?',
+    a: 'In General Mode, paste any YouTube link into the input bar. Chorus will parse the video, chapters, and executive summary.'
+  }
+];
+
 export default function HelpSupportModal({ isOpen, onClose, onOpenEvidence }) {
-  const [search, setSearch] = useState('');
+  const [activeTab, setActiveTab] = useState('shortcuts');
 
   if (!isOpen) return null;
 
   return (
     <div className="umm-overlay" onClick={onClose}>
       <div className="umm-modal umm-modal-wide" onClick={e => e.stopPropagation()}>
+        {/* Header (No icons) */}
         <div className="umm-header">
           <div className="umm-header-left">
-            <span className="umm-header-icon"><HelpCircle size={18} /></span>
-            <h2>Help & Resources</h2>
+            <h2>Help & Support</h2>
+            <span className="umm-header-subtitle">Shortcuts, guides, and assistance</span>
           </div>
-          <button className="umm-close-btn" onClick={onClose}>
-            <X size={18} />
+          <button className="umm-close-btn" onClick={onClose} aria-label="Close">
+            &times;
           </button>
         </div>
 
-        <div className="umm-body">
-          {/* Status Banner */}
-          <div className="umm-status-banner">
-            <div>
-              <span className="umm-status-dot"></span>
-              <strong>Chorus Core AI Operational</strong> — Inference cluster latency: 18ms
-            </div>
-            <span style={{ fontSize: 11, opacity: 0.8 }}>v2.4 Enterprise</span>
-          </div>
-
-          {/* Quick Help Cards */}
-          <div className="umm-help-grid">
-            <div 
-              className="umm-help-card" 
-              style={{ cursor: 'pointer' }}
-              onClick={() => {
-                onClose();
-                if (onOpenEvidence) onOpenEvidence();
-              }}
-            >
-              <div className="umm-help-card-icon"><BookOpen size={20} /></div>
-              <div className="umm-help-card-title">Evidence Room Guide ↗</div>
-              <div className="umm-help-card-desc">
-                Learn how to scrub through video timeline manifests, inspect synced camera angles, and verify cryptographic hashes.
-              </div>
-            </div>
-
-            <div className="umm-help-card">
-              <div className="umm-help-card-icon"><ShieldCheck size={20} /></div>
-              <div className="umm-help-card-title">Tamper Audit Engine</div>
-              <div className="umm-help-card-desc">
-                Understand optical flow discontinuity, quantization frame splicing, and audio waveform desync flags.
-              </div>
-            </div>
-          </div>
-
-          {/* Keyboard Shortcuts */}
-          <div className="umm-form-group">
-            <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Command size={14} />
-              <span>Keyboard Shortcuts</span>
-            </label>
-            <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.07)', borderRadius: 10 }}>
-              <div className="umm-shortcut-item">
-                <span>Start New Analysis / Chat</span>
-                <span className="umm-kbd">Ctrl + N</span>
-              </div>
-              <div className="umm-shortcut-item">
-                <span>Search Investigation History</span>
-                <span className="umm-kbd">Ctrl + K</span>
-              </div>
-              <div className="umm-shortcut-item">
-                <span>Toggle Left Sidebar</span>
-                <span className="umm-kbd">Ctrl + B</span>
-              </div>
-              <div className="umm-shortcut-item">
-                <span>Close Popovers / Modals</span>
-                <span className="umm-kbd">Esc</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Contact Support */}
-          <div className="umm-toggle-row">
-            <div className="umm-toggle-info">
-              <span className="umm-toggle-title">Emergency Cyber Forensics Support</span>
-              <span className="umm-toggle-desc">24/7 direct escalation hotline for chain of custody validation and tamper incident response.</span>
-            </div>
-            <a 
-              href="mailto:support@chorus.ai" 
-              className="umm-btn-cancel" 
-              style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
-            >
-              <span>Contact Support</span>
-              <ExternalLink size={13} />
-            </a>
-          </div>
+        {/* Tab Navigation (Text only, no icons) */}
+        <div className="umm-tabs">
+          <button 
+            type="button"
+            className={`umm-tab-btn ${activeTab === 'shortcuts' ? 'active' : ''}`}
+            onClick={() => setActiveTab('shortcuts')}
+          >
+            Shortcuts
+          </button>
+          <button 
+            type="button"
+            className={`umm-tab-btn ${activeTab === 'faq' ? 'active' : ''}`}
+            onClick={() => setActiveTab('faq')}
+          >
+            FAQ
+          </button>
+          <button 
+            type="button"
+            className={`umm-tab-btn ${activeTab === 'contact' ? 'active' : ''}`}
+            onClick={() => setActiveTab('contact')}
+          >
+            Support
+          </button>
         </div>
 
+        {/* Body (No colors, No icons) */}
+        <div className="umm-body">
+          {activeTab === 'shortcuts' && (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {SHORTCUTS.map((sc, idx) => (
+                <div key={idx} className="umm-list-row">
+                  <span>{sc.action}</span>
+                  <span className="umm-kbd">{sc.keys}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {activeTab === 'faq' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {FAQS.map((faq, idx) => (
+                <div key={idx} className="umm-faq-item">
+                  <div className="umm-faq-q">
+                    {faq.q}
+                  </div>
+                  <div className="umm-faq-a">
+                    {faq.a}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {activeTab === 'contact' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div className="umm-toggle-row">
+                <div className="umm-toggle-info">
+                  <span className="umm-toggle-title">Email Support</span>
+                  <span className="umm-toggle-desc">Contact the engineering and support team</span>
+                </div>
+                <a 
+                  href="mailto:support@chorus.ai" 
+                  className="umm-btn-cancel" 
+                  style={{ textDecoration: 'none' }}
+                >
+                  support@chorus.ai
+                </a>
+              </div>
+
+              {onOpenEvidence && (
+                <div className="umm-toggle-row">
+                  <div className="umm-toggle-info">
+                    <span className="umm-toggle-title">Evidence Room</span>
+                    <span className="umm-toggle-desc">Open the multi-camera manifest evidence room</span>
+                  </div>
+                  <button
+                    type="button"
+                    className="umm-btn-cancel"
+                    onClick={() => {
+                      onClose();
+                      onOpenEvidence();
+                    }}
+                  >
+                    Open Evidence Room
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer (No icons) */}
         <div className="umm-footer">
           <button type="button" className="umm-btn-primary" onClick={onClose}>
-            Got it
+            Close
           </button>
         </div>
       </div>

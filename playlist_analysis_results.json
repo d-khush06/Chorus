@@ -1,90 +1,377 @@
 {
-  "batch_type": "playlist_batch_checkpoint",
-  "playlist_url": "https://youtube.com/playlist?list=PLsXdBvuJ5ox7U8HipGaQoS95fFcIhKRRS&si=bS6P3OTo7sjlH5I4\r\nsummarysize the video first 5 vidoe only",
-  "total_playlist_videos": 94,
-  "total_selected": 94,
-  "batch_size": 2,
-  "completed_batches": 1,
-  "total_batches": 47,
-  "videos_processed_so_far": 2,
-  "successful_so_far": 2,
-  "failed_so_far": 0,
-  "per_video_summaries": [
-    {
-      "index": 1,
-      "video_id": "xTLK0iHLxFs",
-      "title": "English Speaking Course Day 1 | Spoken English Guru Day 1 | English Speaking Practice Class 1",
-      "url": "https://www.youtube.com/watch?v=xTLK0iHLxFs",
-      "duration_seconds": 0.0,
-      "scene_count": 43,
-      "keyframe_timestamps": [
-        "02:28 (Scene 0)",
-        "05:28 (Scene 3)",
-        "08:40 (Scene 7)",
-        "12:26 (Scene 10)",
-        "15:49 (Scene 14)",
-        "17:08 (Scene 17)",
-        "23:09 (Scene 21)",
-        "28:31 (Scene 25)",
-        "30:50 (Scene 28)",
-        "32:43 (Scene 32)",
-        "35:11 (Scene 35)",
-        "38:01 (Scene 39)"
-      ],
-      "key_features_summary": [
-        "Title: English Speaking Course Day 1 | Spoken English Guru Day 1 | English Speaking Practice Class 1",
-        "Technical: 2424.8s | 640x360 @ 30.0fps",
-        "Structure: 43 distinct scenes detected",
-        "Sampled Timestamps: 02:28 (Scene 0), 05:28 (Scene 3), 08:40 (Scene 7), 12:26 (Scene 10), 15:49 (Scene 14), 17:08 (Scene 17), 23:09 (Scene 21), 28:31 (Scene 25)",
-        "Forensics: Synthetic/Deepfake anomaly flagged"
-      ],
-      "word_count": 0,
+  "pipeline_halted": false,
+  "halt_reason": null,
+  "halt_step": null,
+  "mode": "general",
+  "source_type": "local_upload",
+  "source_uri": "C:\\Users\\DELL\\OneDrive\\Desktop\\sem5\\sem 5 video project\\backend\\uploads\\upload-1789751887991-313251283.mp4",
+  "user_question": "\"Focus strictly on what is physically happening in the video: who is in the video, what they are doing, their actions, movement, setting, objects, and any visible writing or text. Do NOT discuss metadata, video duration, frame rates, keyframes, or technical pipeline concepts. Do NOT say 'Scene 0', 'Monitored Window', 'keyframes', or 'multimodal evidence'.\"",
+  "routing_decision": {
+    "mode": "general",
+    "tool_calls": [
+      "scene_segmentation",
+      "perception_agent",
+      "asr_agent",
+      "review_queue",
+      "fusion_agent",
+      "domain_output"
+    ],
+    "excluded": [
+      "geo_estimation_agent",
+      "face_reid_agent",
+      "alert_system"
+    ],
+    "reasoning_summary": "Rule-based routing (orchestrator model not available or fast mode requested).",
+    "routing_method": "rule_based"
+  },
+  "started_at": "2026-09-18T17:18:08.294014Z",
+  "completed_at": "2026-09-18T17:20:47.206957Z",
+  "duplication_result": null,
+  "quality_gate_result": {
+    "overall_verdict": "PASS",
+    "rule_results": [
+      {
+        "rule": "1_timestamp_integrity",
+        "status": "PASS",
+        "failed_event_ids": [],
+        "notes": "All event timestamps are within valid bounds."
+      },
+      {
+        "rule": "2_confidence_floor",
+        "status": "PASS",
+        "failed_event_ids": [],
+        "notes": "All events meet the minimum confidence threshold."
+      },
+      {
+        "rule": "3_cross_source_contradiction",
+        "status": "PASS",
+        "failed_event_ids": [],
+        "notes": "No unresolved cross-source contradictions detected."
+      },
+      {
+        "rule": "4_speaker_consistency",
+        "status": "PASS",
+        "failed_event_ids": [],
+        "notes": "No speaker identity conflicts detected."
+      },
+      {
+        "rule": "5_coverage_gaps",
+        "status": "PASS",
+        "failed_event_ids": [],
+        "notes": "No coverage gaps exceeding 45 s detected in the full timeline."
+      },
+      {
+        "rule": "6_hallucination_guard",
+        "status": "PASS",
+        "failed_event_ids": [],
+        "notes": "All events are attributed to a recognised source signal."
+      },
+      {
+        "rule": "7_format_completeness",
+        "status": "PASS",
+        "failed_event_ids": [],
+        "notes": "All events contain all required fields."
+      },
+      {
+        "rule": "8_stream_continuity",
+        "status": "not_applicable",
+        "failed_event_ids": [],
+        "notes": "Rule 8 applies only to live_rtsp sources."
+      }
+    ],
+    "route_to_human_review": false
+  },
+  "manipulation_result": {
+    "verdict": "FLAGGED",
+    "frames_analyzed": 0,
+    "faces_detected": 0,
+    "detector_error": true
+  },
+  "scene_result": {
+    "scenes": [
+      {
+        "scene_id": 0,
+        "start_seconds": 0.0,
+        "end_seconds": 21.6
+      }
+    ],
+    "detector_used": "content",
+    "source_type": "local_upload"
+  },
+  "key_features": {
+    "video_title": "upload-1789751887991-313251283.mp4",
+    "video_id": "",
+    "playlist_context": "",
+    "duration_seconds": 21.6,
+    "fps": 25.0,
+    "resolution": "2304x1296",
+    "total_frames": 540,
+    "scenes": [
+      {
+        "scene_id": 0,
+        "start_seconds": 0.0,
+        "end_seconds": 21.6
+      }
+    ],
+    "scene_count": 1,
+    "keyframe_timestamps": [
+      "00:00 (Point 1)",
+      "00:03 (Point 2)",
+      "00:06 (Point 3)",
+      "00:09 (Point 4)",
+      "00:12 (Point 5)",
+      "00:15 (Point 6)",
+      "00:18 (Point 7)",
+      "00:21 (Point 8)"
+    ],
+    "audio_transcript": "t take come here",
+    "audio_language": "en",
+    "audio_word_count": 4,
+    "ai_generated_flag": true,
+    "deepfake_flag": true,
+    "manipulation_verdict": "FLAGGED",
+    "key_features_summary": [
+      "Title: upload-1789751887991-313251283.mp4",
+      "Technical: 21.6s | 2304x1296 @ 25.0fps",
+      "Structure: 1 distinct scenes detected",
+      "Sampled Timestamps: 00:00 (Point 1), 00:03 (Point 2), 00:06 (Point 3), 00:09 (Point 4), 00:12 (Point 5), 00:15 (Point 6), 00:18 (Point 7), 00:21 (Point 8)",
+      "Audio Speech: 4 words in en",
+      "Forensics: Synthetic/Deepfake anomaly flagged"
+    ]
+  },
+  "vl_output": "A man wearing a black shirt and light-colored pants walks into a room filled with desks and chairs. He moves from one side of the room to the other, passing by a computer monitor and keyboard on a desk. The room appears to be a computer lab or office space. There are several blue chairs arranged around the desks, and a large window with glass panels can be seen in the background. The man exits the room through a door on the right side of the frame.",
+  "asr_result": {
+    "language": "en",
+    "language_confidence": 0.78,
+    "segments": [
+      {
+        "segment_id": 0,
+        "start_s": 0.0,
+        "end_s": 3.8,
+        "text": "t",
+        "avg_logprob": -4.0429,
+        "no_speech_prob": 0.4995
+      },
+      {
+        "segment_id": 1,
+        "start_s": 3.8,
+        "end_s": 11.94,
+        "text": "take",
+        "avg_logprob": -4.0429,
+        "no_speech_prob": 0.4995
+      },
+      {
+        "segment_id": 2,
+        "start_s": 11.94,
+        "end_s": 13.52,
+        "text": "come",
+        "avg_logprob": -4.0429,
+        "no_speech_prob": 0.4995
+      },
+      {
+        "segment_id": 3,
+        "start_s": 13.52,
+        "end_s": 24.52,
+        "text": "here",
+        "avg_logprob": -4.0429,
+        "no_speech_prob": 0.4995
+      }
+    ],
+    "full_transcript": "t take come here",
+    "word_count": 4,
+    "duration_s": 24.52,
+    "model_used": "whisper-base",
+    "started_at": "2026-09-18T17:18:15.037115Z",
+    "completed_at": "2026-09-18T17:18:23.197610Z",
+    "error": null
+  },
+  "fusion_result": {
+    "fused_timeline": [
+      {
+        "scene_id": 0,
+        "start_s": 0.0,
+        "end_s": 21.6,
+        "vl_description": "A man wearing a black shirt and light-colored pants walks into a room filled with desks and chairs. He moves from one side of the room to the other, passing by a computer monitor and keyboard on a desk. The room appears to be a computer lab or office space. There are several blue chairs arranged around the desks, and a large window with glass panels can be seen in the background. The man exits the room through a door on the right side of the frame.",
+        "asr_segments": [
+          {
+            "segment_id": 0,
+            "start_s": 0.0,
+            "end_s": 3.8,
+            "text": "t",
+            "avg_logprob": -4.0429,
+            "no_speech_prob": 0.4995
+          },
+          {
+            "segment_id": 1,
+            "start_s": 3.8,
+            "end_s": 11.94,
+            "text": "take",
+            "avg_logprob": -4.0429,
+            "no_speech_prob": 0.4995
+          },
+          {
+            "segment_id": 2,
+            "start_s": 11.94,
+            "end_s": 13.52,
+            "text": "come",
+            "avg_logprob": -4.0429,
+            "no_speech_prob": 0.4995
+          },
+          {
+            "segment_id": 3,
+            "start_s": 13.52,
+            "end_s": 24.52,
+            "text": "here",
+            "avg_logprob": -4.0429,
+            "no_speech_prob": 0.4995
+          }
+        ],
+        "asr_text": "t take come here",
+        "acoustic_events": [],
+        "scene_tags": [
+          "speech_detected",
+          "persons_visible",
+          "indoor_scene"
+        ]
+      }
+    ],
+    "full_vl_output": "A man wearing a black shirt and light-colored pants walks into a room filled with desks and chairs. He moves from one side of the room to the other, passing by a computer monitor and keyboard on a desk. The room appears to be a computer lab or office space. There are several blue chairs arranged around the desks, and a large window with glass panels can be seen in the background. The man exits the room through a door on the right side of the frame.",
+    "full_transcript": "t take come here",
+    "summary": {
+      "total_scenes": 1,
+      "total_asr_segments": 4,
+      "total_words": 4,
+      "has_speech": true,
+      "has_vl_output": true,
       "language": "en",
-      "summary": "Title: English Speaking Course Day 1 | Spoken English Guru Day 1 | English Speaking Practice Class 1\n\nDuration: 0.0s | Scenes: 43 | Language: en\n\nKey Multimodal Characteristics:\n\n  • Title: English Speaking Course Day 1 | Spoken English Guru Day 1 | English Speaking Practice Class 1\n\n  • Technical: 2424.8s | 640x360 @ 30.0fps\n\n  • Structure: 43 distinct scenes detected\n\n  • Sampled Timestamps: 02:28 (Scene 0), 05:28 (Scene 3), 08:40 (Scene 7), 12:26 (Scene 10), 15:49 (Scene 14), 17:08 (Scene 17), 23:09 (Scene 21), 28:31 (Scene 25)\n\n  • Forensics: Synthetic/Deepfake anomaly flagged\n\nVisual Analysis (VL Brain):\n### Visual & Multimodal Analysis: English Speaking Course Day 1 | Spoken English Guru Day 1 | English Speaking Practice Class 1\n- **Duration**: 2424.8s\n- **Scenes Detected**: 43 distinct transitions\n- **Key Timeline Points**: 02:28 (Scene 0), 05:28 (Scene 3), 08:40 (Scene 7), 12:26 (Scene 10), 15:49 (Scene 14), 17:08 (Scene 17), 23:09 (Scene 21), 28:31 (Scene 25), 30:50 (Scene 28), 32:43 (Scene 32)\n\n#### Key Findings & Timeline Analysis\n1. **Content Overview**: The video 'English Speaking Course Day 1 | Spoken English Guru Day 1 | English Speaking Practice Class 1' exhibits clear structural progression across 43 segments.\n2. **Auditory & Visual Correlation**: Speech markers and scene boundaries align with the designated timeline points.\n3. **Inquiry Response**: Regarding 'Summarize this video and provide analytical findings.', the analyzed multimodal features indicate coherent event progression matching the keyframes.",
-      "detailed_answer": "Analysis for Video #1 ('English Speaking Course Day 1 | Spoken English Guru Day 1 | English Speaking Practice Class 1'):\nVisual Presentation & Demonstrations: ### Visual & Multimodal Analysis: English Speaking Course Day 1 | Spoken English Guru Day 1 | English Speaking Practice Class 1\n- **Duration**: 2424.8s\n- **Scenes Detected**: 43 distinct transitions\n- **Key Timeline Points**: 02:28 (Scene 0), 05:28 (Scene 3), 08:40 (Scene 7), 12:26 (Scene 10), 15:49 (Scene 14), 17:08 (Scene 17), 23:09 (Scene 21), 28:31 (Scene 25), 30:50 (Scene 28), 32:43 (Scene 32)\n\n#### Key Findings & Timeline Analysis\n1. **Content Overview**: The video 'English Speaking Course",
-      "topics_covered": [
-        "English Speaking Course Day 1 | Spoken English Guru Day 1 | English Speaking Practice Class 1"
-      ],
-      "status": "completed"
+      "language_confidence": 0.78,
+      "duration_s": 21.6,
+      "mode": "general",
+      "deepfake_flag": true,
+      "ai_generated_flag": true
     },
-    {
-      "index": 2,
-      "video_id": "3jRpBkU9mX8",
-      "title": "पहले A से Z तक उच्चारण (PRONUNCIATION) बिल्कुल सही करो। English Speaking Course Day 2",
-      "url": "https://www.youtube.com/watch?v=3jRpBkU9mX8",
-      "duration_seconds": 0.0,
-      "scene_count": 57,
-      "keyframe_timestamps": [
-        "00:30 (Scene 0)",
-        "06:07 (Scene 4)",
-        "08:42 (Scene 9)",
-        "15:14 (Scene 14)",
-        "19:32 (Scene 19)",
-        "22:21 (Scene 23)",
-        "25:18 (Scene 28)",
-        "31:36 (Scene 33)",
-        "34:03 (Scene 38)",
-        "44:14 (Scene 42)",
-        "51:33 (Scene 47)",
-        "56:02 (Scene 52)"
-      ],
-      "key_features_summary": [
-        "Title: पहले A से Z तक उच्चारण (PRONUNCIATION) बिल्कुल सही करो। English Speaking Course Day 2",
-        "Technical: 3542.63s | 640x360 @ 30.0fps",
-        "Structure: 57 distinct scenes detected",
-        "Sampled Timestamps: 00:30 (Scene 0), 06:07 (Scene 4), 08:42 (Scene 9), 15:14 (Scene 14), 19:32 (Scene 19), 22:21 (Scene 23), 25:18 (Scene 28), 31:36 (Scene 33)",
-        "Forensics: Synthetic/Deepfake anomaly flagged"
-      ],
-      "word_count": 0,
-      "language": "en",
-      "summary": "Title: पहले A से Z तक उच्चारण (PRONUNCIATION) बिल्कुल सही करो। English Speaking Course Day 2\n\nDuration: 0.0s | Scenes: 57 | Language: en\n\nKey Multimodal Characteristics:\n\n  • Title: पहले A से Z तक उच्चारण (PRONUNCIATION) बिल्कुल सही करो। English Speaking Course Day 2\n\n  • Technical: 3542.63s | 640x360 @ 30.0fps\n\n  • Structure: 57 distinct scenes detected\n\n  • Sampled Timestamps: 00:30 (Scene 0), 06:07 (Scene 4), 08:42 (Scene 9), 15:14 (Scene 14), 19:32 (Scene 19), 22:21 (Scene 23), 25:18 (Scene 28), 31:36 (Scene 33)\n\n  • Forensics: Synthetic/Deepfake anomaly flagged\n\nVisual Analysis (VL Brain):\n### Visual & Multimodal Analysis: पहले A से Z तक उच्चारण (PRONUNCIATION) बिल्कुल सही करो। English Speaking Course Day 2\n- **Duration**: 3542.63s\n- **Scenes Detected**: 57 distinct transitions\n- **Key Timeline Points**: 00:30 (Scene 0), 06:07 (Scene 4), 08:42 (Scene 9), 15:14 (Scene 14), 19:32 (Scene 19), 22:21 (Scene 23), 25:18 (Scene 28), 31:36 (Scene 33), 34:03 (Scene 38), 44:14 (Scene 42)\n\n#### Key Findings & Timeline Analysis\n1. **Content Overview**: The video 'पहले A से Z तक उच्चारण (PRONUNCIATION) बिल्कुल सही करो। English Speaking Course Day 2' exhibits clear structural progression across 57 segments.\n2. **Auditory & Visual Correlation**: Speech markers and scene boundaries align with the designated timeline points.\n3. **Inquiry Response**: Regarding 'Summarize this video and provide analytical findings.', the analyzed multimodal features indicate coherent event progression matching the keyframes.",
-      "detailed_answer": "Analysis for Video #2 ('पहले A से Z तक उच्चारण (PRONUNCIATION) बिल्कुल सही करो। English Speaking Course Day 2'):\nVisual Presentation & Demonstrations: ### Visual & Multimodal Analysis: पहले A से Z तक उच्चारण (PRONUNCIATION) बिल्कुल सही करो। English Speaking Course Day 2\n- **Duration**: 3542.63s\n- **Scenes Detected**: 57 distinct transitions\n- **Key Timeline Points**: 00:30 (Scene 0), 06:07 (Scene 4), 08:42 (Scene 9), 15:14 (Scene 14), 19:32 (Scene 19), 22:21 (Scene 23), 25:18 (Scene 28), 31:36 (Scene 33), 34:03 (Scene 38), 44:14 (Scene 42)\n\n#### Key Findings & Timeline Analysis\n1. **Content Overview**: The video 'पहले A से Z तक उच्चारण (PRONUN",
-      "topics_covered": [
-        "पहले A से Z तक उच्चारण (PRONUNCIATION) बिल्कुल सही करो। English Speaking Course Day 2"
-      ],
-      "status": "completed"
+    "metadata": {
+      "video_duration_seconds": null,
+      "verdict": "FLAGGED",
+      "frames_analyzed": 0,
+      "faces_detected": 0,
+      "detector_error": true
+    },
+    "deepfake_flag": true,
+    "ai_generated_flag": true,
+    "source_type": "local_upload",
+    "source_uri": "C:\\Users\\DELL\\OneDrive\\Desktop\\sem5\\sem 5 video project\\backend\\uploads\\upload-1789751887991-313251283.mp4",
+    "fused_at": "2026-09-18T17:19:27.779955Z",
+    "error": null,
+    "verification_result": {
+      "reverse_search": {
+        "error": true,
+        "reason": "Base64-encoded images cannot be sent to the Google reverse-image API without a public URL. Upload the image to a temporary host first and pass the resulting URL as 'image'.",
+        "case_id": "bf5fd1d00733f524"
+      },
+      "upload_history": null,
+      "fact_check": null,
+      "web_search": {
+        "error": true,
+        "reason": "Client error HTTP 403: {\"message\":\"Unauthorized. Sign up for a free account.\",\"statusCode\":403}",
+        "case_id": "bf5fd1d00733f524"
+      }
     }
-  ],
-  "failed_videos": [],
-  "checkpoint_saved_at": "2026-09-18T10:43:42.405167Z"
+  },
+  "domain_output": {
+    "enrichment": {
+      "raw_output": "<tool_call>\n{\"name\": \"context_enrichment\", \"arguments\": {\"video_id\": \"upload-1789751887991-313251283\", \"visual_description\": \"A man wearing a black shirt and light-colored pants walks into a room filled with desks and chairs. He moves from one side of the room to the other, passing by a computer monitor and keyboard on a desk. The room appears to be a computer lab or office space. There are several blue chairs arranged around the desks, and a large window with glass panels can be seen in the background. The man exits the room through a door on the right side of the frame.\", \"speech_transcript\": \"t take come here\", \"scene_timeline\": \"[Scene 0] 0.0s–21.6s | Tags: speech_detected, persons_visible, indoor_scene\"}}\n</tool_call>"
+    },
+    "analytics": {
+      "statistics": {
+        "duration_s": 21.6,
+        "total_scenes": 1,
+        "speech_coverage_pct": 100,
+        "total_words_spoken": 4,
+        "detected_language": "en",
+        "scenes_with_persons": 1,
+        "scenes_with_vehicles": 0,
+        "scenes_with_text_on_screen": 0,
+        "deepfake_flagged": true,
+        "ai_generated_flagged": true
+      },
+      "most_important_moment": {
+        "scene_id": 0,
+        "start_s": 0.0,
+        "end_s": 21.6,
+        "reason": "The entire scene depicts a man walking into a room, moving around, and exiting it, which is the main action and setting of the video."
+      },
+      "user_question_answer": "In the video, a man wearing a black shirt and light-colored pants walks into a room filled with desks and chairs. He moves from one side of the room to the other, passing by a computer monitor and keyboard on a desk. The room appears to be a computer lab or office space. There are several blue chairs arranged around the desks, and a large window with glass panels can be seen in the background. The man exits the room through a door on the right side of the frame. No other people or vehicles are visible, and there is no visible writing or text on screen."
+    },
+    "final_output": {
+      "executive_summary": "A man wearing a black shirt and light-colored pants walks into a room filled with desks and chairs, moves from one side to the other, passes by a computer monitor and keyboard, and then exits the room through a door on the right side.",
+      "detailed_analysis": [
+        "The man enters the room, walks across it, and exits, indicating a short journey within the space.",
+        "The room contains desks, chairs, and a computer setup, suggesting an office or study environment.",
+        "No writing or text is visible in the video, focusing solely on visual actions.",
+        "The man's movements cover approximately 21.6 seconds, showing continuous motion.",
+        "The room setting is consistent throughout, with no changes in lighting or background."
+      ],
+      "timeline_highlights": [
+        {
+          "time": "0:00-0:12",
+          "event": "Man enters the room and begins walking towards the center."
+        },
+        {
+          "time": "0:12-0:21",
+          "event": "Man walks past the computer monitor and keyboard, then continues to the opposite side."
+        },
+        {
+          "time": "0:21-0:21.6",
+          "event": "Man exits the room through a door on the right side."
+        }
+      ],
+      "content_flags": {
+        "contains_sensitive_content": false,
+        "contains_faces": true,
+        "contains_audio": false,
+        "manipulation_detected": true
+      },
+      "recommendations": [
+        "Consider verifying the authenticity of the video due to the deepfake flag; further investigation may be needed."
+      ]
+    },
+    "mode": "general",
+    "user_question": "\"Focus strictly on what is physically happening in the video: who is in the video, what they are doing, their actions, movement, setting, objects, and any visible writing or text. Do NOT discuss metadata, video duration, frame rates, keyframes, or technical pipeline concepts. Do NOT say 'Scene 0', 'Monitored Window', 'keyframes', or 'multimodal evidence'.\"",
+    "generated_at": "2026-09-18T17:19:27.780958Z",
+    "error": null
+  },
+  "acoustic_result": null,
+  "geo_result": null,
+  "face_reid_result": null,
+  "alert_result": null,
+  "review_queue_result": {
+    "item_id": "83bc023e30ab",
+    "created_at": "2026-09-18T17:19:26.874279Z",
+    "source_uri": "C:\\Users\\DELL\\OneDrive\\Desktop\\sem5\\sem 5 video project\\backend\\uploads\\upload-1789751887991-313251283.mp4",
+    "mode": "general",
+    "step": "pipeline_review",
+    "reason": "Deepfake/manipulation flagged",
+    "severity": "HIGH",
+    "confidence": 0.5,
+    "status": "OPEN",
+    "recommended_action": "Human analyst review required.",
+    "payload": {}
+  },
+  "verification_result": {
+    "reverse_search": {
+      "error": true,
+      "reason": "Base64-encoded images cannot be sent to the Google reverse-image API without a public URL. Upload the image to a temporary host first and pass the resulting URL as 'image'.",
+      "case_id": "bf5fd1d00733f524"
+    },
+    "upload_history": null,
+    "fact_check": null,
+    "web_search": {
+      "error": true,
+      "reason": "Client error HTTP 403: {\"message\":\"Unauthorized. Sign up for a free account.\",\"statusCode\":403}",
+      "case_id": "bf5fd1d00733f524"
+    }
+  },
+  "playlist_manifest": null,
+  "analyzed_video_info": null
 }
