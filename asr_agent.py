@@ -68,13 +68,34 @@ from typing import Optional
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
+def _ensure_ffmpeg():
+    import shutil
+    if shutil.which("ffmpeg"):
+        return
+    try:
+        import imageio_ffmpeg
+        exe = imageio_ffmpeg.get_ffmpeg_exe()
+        d = os.path.dirname(exe)
+        t = os.path.join(d, "ffmpeg.exe")
+        if not os.path.exists(t):
+            shutil.copyfile(exe, t)
+        os.environ["PATH"] = d + os.pathsep + os.environ.get("PATH", "")
+    except Exception:
+        pass
+    if not shutil.which("ffmpeg"):
+        solidworks_ffmpeg = r"C:\Program Files\SOLIDWORKS Corp\SOLIDWORKS Flow Simulation\binCFW"
+        if os.path.exists(os.path.join(solidworks_ffmpeg, "ffmpeg.exe")):
+            os.environ["PATH"] = solidworks_ffmpeg + os.pathsep + os.environ.get("PATH", "")
+
+_ensure_ffmpeg()
+
 # ─────────────────────────────────────────────────────────────────────────────
 # CONFIGURATION
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Model to use. Override via ASR_MODEL env var or --model CLI flag.
 # Options: "large-v3", "large-v2", "medium", "small", "base", "tiny"
-DEFAULT_MODEL_SIZE = os.getenv("ASR_MODEL", "large-v3")
+DEFAULT_MODEL_SIZE = os.getenv("ASR_MODEL", "base")
 
 # VRAM threshold (GB) below which we auto-downgrade to "base"
 VRAM_DOWNGRADE_THRESHOLD_GB = 4.0

@@ -21,6 +21,10 @@ datasets/
 audit_logs/
 text_output.*
 vl_output.*
+batch_run_log.txt
+batch_run_output.json
+backend/uploads/
+
 
 # Python & Environment
 __pycache__/
@@ -32,6 +36,14 @@ venv/
 env/
 .env
 *.env
+.env_mcp
+*.env_mcp
+
+# Frontend environment files
+frontend/.env
+frontend/.env.local
+backend/.env
+backend/.env.local
 
 # IDE & OS files
 .vscode/

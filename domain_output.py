@@ -274,14 +274,18 @@ def _fused_to_text(fused: dict, max_chars: int = 8000, mode: str = "general") ->
     # Scene-by-scene breakdown
     lines.append("=== SCENE-BY-SCENE TIMELINE ===")
     for scene in fused.get("fused_timeline", []):
-        sid = scene["scene_id"]
-        t = f"{scene['start_s']:.1f}s–{scene['end_s']:.1f}s"
+        sid = scene.get("scene_id", 0)
+        start = float(scene.get("start_s", scene.get("start_seconds", 0.0)))
+        end = float(scene.get("end_s", scene.get("end_seconds", 0.0)))
+        t = f"{start:.1f}s–{end:.1f}s"
         tags = ", ".join(scene.get("scene_tags", [])) or "none"
         lines.append(f"[Scene {sid}] {t} | Tags: {tags}")
-        if scene.get("vl_description") and scene["vl_description"] != "[See scene 0 for full analysis]":
-            lines.append(f"  Visual: {scene['vl_description'][:300]}")
-        if scene.get("asr_text"):
-            lines.append(f"  Speech: {scene['asr_text'][:300]}")
+        vl_desc = scene.get("vl_description") or (scene.get("content") if scene.get("event_type") == "object" else None)
+        if vl_desc and vl_desc != "[See scene 0 for full analysis]":
+            lines.append(f"  Visual: {vl_desc[:300]}")
+        asr_txt = scene.get("asr_text") or (scene.get("content") if scene.get("event_type") == "speech" else None)
+        if asr_txt:
+            lines.append(f"  Speech: {asr_txt[:300]}")
         lines.append("")
 
     # ── Cyber Intelligence Data (cyber mode only) ─────────────────────────

@@ -1,0 +1,90 @@
+{
+  "batch_type": "playlist_batch_checkpoint",
+  "playlist_url": "https://youtube.com/playlist?list=PLsXdBvuJ5ox7U8HipGaQoS95fFcIhKRRS&si=bS6P3OTo7sjlH5I4\r\nsummarysize the video first 5 vidoe only",
+  "total_playlist_videos": 94,
+  "total_selected": 94,
+  "batch_size": 2,
+  "completed_batches": 1,
+  "total_batches": 47,
+  "videos_processed_so_far": 2,
+  "successful_so_far": 2,
+  "failed_so_far": 0,
+  "per_video_summaries": [
+    {
+      "index": 1,
+      "video_id": "xTLK0iHLxFs",
+      "title": "English Speaking Course Day 1 | Spoken English Guru Day 1 | English Speaking Practice Class 1",
+      "url": "https://www.youtube.com/watch?v=xTLK0iHLxFs",
+      "duration_seconds": 0.0,
+      "scene_count": 43,
+      "keyframe_timestamps": [
+        "02:28 (Scene 0)",
+        "05:28 (Scene 3)",
+        "08:40 (Scene 7)",
+        "12:26 (Scene 10)",
+        "15:49 (Scene 14)",
+        "17:08 (Scene 17)",
+        "23:09 (Scene 21)",
+        "28:31 (Scene 25)",
+        "30:50 (Scene 28)",
+        "32:43 (Scene 32)",
+        "35:11 (Scene 35)",
+        "38:01 (Scene 39)"
+      ],
+      "key_features_summary": [
+        "Title: English Speaking Course Day 1 | Spoken English Guru Day 1 | English Speaking Practice Class 1",
+        "Technical: 2424.8s | 640x360 @ 30.0fps",
+        "Structure: 43 distinct scenes detected",
+        "Sampled Timestamps: 02:28 (Scene 0), 05:28 (Scene 3), 08:40 (Scene 7), 12:26 (Scene 10), 15:49 (Scene 14), 17:08 (Scene 17), 23:09 (Scene 21), 28:31 (Scene 25)",
+        "Forensics: Synthetic/Deepfake anomaly flagged"
+      ],
+      "word_count": 0,
+      "language": "en",
+      "summary": "Title: English Speaking Course Day 1 | Spoken English Guru Day 1 | English Speaking Practice Class 1\n\nDuration: 0.0s | Scenes: 43 | Language: en\n\nKey Multimodal Characteristics:\n\n  • Title: English Speaking Course Day 1 | Spoken English Guru Day 1 | English Speaking Practice Class 1\n\n  • Technical: 2424.8s | 640x360 @ 30.0fps\n\n  • Structure: 43 distinct scenes detected\n\n  • Sampled Timestamps: 02:28 (Scene 0), 05:28 (Scene 3), 08:40 (Scene 7), 12:26 (Scene 10), 15:49 (Scene 14), 17:08 (Scene 17), 23:09 (Scene 21), 28:31 (Scene 25)\n\n  • Forensics: Synthetic/Deepfake anomaly flagged\n\nVisual Analysis (VL Brain):\n### Visual & Multimodal Analysis: English Speaking Course Day 1 | Spoken English Guru Day 1 | English Speaking Practice Class 1\n- **Duration**: 2424.8s\n- **Scenes Detected**: 43 distinct transitions\n- **Key Timeline Points**: 02:28 (Scene 0), 05:28 (Scene 3), 08:40 (Scene 7), 12:26 (Scene 10), 15:49 (Scene 14), 17:08 (Scene 17), 23:09 (Scene 21), 28:31 (Scene 25), 30:50 (Scene 28), 32:43 (Scene 32)\n\n#### Key Findings & Timeline Analysis\n1. **Content Overview**: The video 'English Speaking Course Day 1 | Spoken English Guru Day 1 | English Speaking Practice Class 1' exhibits clear structural progression across 43 segments.\n2. **Auditory & Visual Correlation**: Speech markers and scene boundaries align with the designated timeline points.\n3. **Inquiry Response**: Regarding 'Summarize this video and provide analytical findings.', the analyzed multimodal features indicate coherent event progression matching the keyframes.",
+      "detailed_answer": "Analysis for Video #1 ('English Speaking Course Day 1 | Spoken English Guru Day 1 | English Speaking Practice Class 1'):\nVisual Presentation & Demonstrations: ### Visual & Multimodal Analysis: English Speaking Course Day 1 | Spoken English Guru Day 1 | English Speaking Practice Class 1\n- **Duration**: 2424.8s\n- **Scenes Detected**: 43 distinct transitions\n- **Key Timeline Points**: 02:28 (Scene 0), 05:28 (Scene 3), 08:40 (Scene 7), 12:26 (Scene 10), 15:49 (Scene 14), 17:08 (Scene 17), 23:09 (Scene 21), 28:31 (Scene 25), 30:50 (Scene 28), 32:43 (Scene 32)\n\n#### Key Findings & Timeline Analysis\n1. **Content Overview**: The video 'English Speaking Course",
+      "topics_covered": [
+        "English Speaking Course Day 1 | Spoken English Guru Day 1 | English Speaking Practice Class 1"
+      ],
+      "status": "completed"
+    },
+    {
+      "index": 2,
+      "video_id": "3jRpBkU9mX8",
+      "title": "पहले A से Z तक उच्चारण (PRONUNCIATION) बिल्कुल सही करो। English Speaking Course Day 2",
+      "url": "https://www.youtube.com/watch?v=3jRpBkU9mX8",
+      "duration_seconds": 0.0,
+      "scene_count": 57,
+      "keyframe_timestamps": [
+        "00:30 (Scene 0)",
+        "06:07 (Scene 4)",
+        "08:42 (Scene 9)",
+        "15:14 (Scene 14)",
+        "19:32 (Scene 19)",
+        "22:21 (Scene 23)",
+        "25:18 (Scene 28)",
+        "31:36 (Scene 33)",
+        "34:03 (Scene 38)",
+        "44:14 (Scene 42)",
+        "51:33 (Scene 47)",
+        "56:02 (Scene 52)"
+      ],
+      "key_features_summary": [
+        "Title: पहले A से Z तक उच्चारण (PRONUNCIATION) बिल्कुल सही करो। English Speaking Course Day 2",
+        "Technical: 3542.63s | 640x360 @ 30.0fps",
+        "Structure: 57 distinct scenes detected",
+        "Sampled Timestamps: 00:30 (Scene 0), 06:07 (Scene 4), 08:42 (Scene 9), 15:14 (Scene 14), 19:32 (Scene 19), 22:21 (Scene 23), 25:18 (Scene 28), 31:36 (Scene 33)",
+        "Forensics: Synthetic/Deepfake anomaly flagged"
+      ],
+      "word_count": 0,
+      "language": "en",
+      "summary": "Title: पहले A से Z तक उच्चारण (PRONUNCIATION) बिल्कुल सही करो। English Speaking Course Day 2\n\nDuration: 0.0s | Scenes: 57 | Language: en\n\nKey Multimodal Characteristics:\n\n  • Title: पहले A से Z तक उच्चारण (PRONUNCIATION) बिल्कुल सही करो। English Speaking Course Day 2\n\n  • Technical: 3542.63s | 640x360 @ 30.0fps\n\n  • Structure: 57 distinct scenes detected\n\n  • Sampled Timestamps: 00:30 (Scene 0), 06:07 (Scene 4), 08:42 (Scene 9), 15:14 (Scene 14), 19:32 (Scene 19), 22:21 (Scene 23), 25:18 (Scene 28), 31:36 (Scene 33)\n\n  • Forensics: Synthetic/Deepfake anomaly flagged\n\nVisual Analysis (VL Brain):\n### Visual & Multimodal Analysis: पहले A से Z तक उच्चारण (PRONUNCIATION) बिल्कुल सही करो। English Speaking Course Day 2\n- **Duration**: 3542.63s\n- **Scenes Detected**: 57 distinct transitions\n- **Key Timeline Points**: 00:30 (Scene 0), 06:07 (Scene 4), 08:42 (Scene 9), 15:14 (Scene 14), 19:32 (Scene 19), 22:21 (Scene 23), 25:18 (Scene 28), 31:36 (Scene 33), 34:03 (Scene 38), 44:14 (Scene 42)\n\n#### Key Findings & Timeline Analysis\n1. **Content Overview**: The video 'पहले A से Z तक उच्चारण (PRONUNCIATION) बिल्कुल सही करो। English Speaking Course Day 2' exhibits clear structural progression across 57 segments.\n2. **Auditory & Visual Correlation**: Speech markers and scene boundaries align with the designated timeline points.\n3. **Inquiry Response**: Regarding 'Summarize this video and provide analytical findings.', the analyzed multimodal features indicate coherent event progression matching the keyframes.",
+      "detailed_answer": "Analysis for Video #2 ('पहले A से Z तक उच्चारण (PRONUNCIATION) बिल्कुल सही करो। English Speaking Course Day 2'):\nVisual Presentation & Demonstrations: ### Visual & Multimodal Analysis: पहले A से Z तक उच्चारण (PRONUNCIATION) बिल्कुल सही करो। English Speaking Course Day 2\n- **Duration**: 3542.63s\n- **Scenes Detected**: 57 distinct transitions\n- **Key Timeline Points**: 00:30 (Scene 0), 06:07 (Scene 4), 08:42 (Scene 9), 15:14 (Scene 14), 19:32 (Scene 19), 22:21 (Scene 23), 25:18 (Scene 28), 31:36 (Scene 33), 34:03 (Scene 38), 44:14 (Scene 42)\n\n#### Key Findings & Timeline Analysis\n1. **Content Overview**: The video 'पहले A से Z तक उच्चारण (PRONUN",
+      "topics_covered": [
+        "पहले A से Z तक उच्चारण (PRONUNCIATION) बिल्कुल सही करो। English Speaking Course Day 2"
+      ],
+      "status": "completed"
+    }
+  ],
+  "failed_videos": [],
+  "checkpoint_saved_at": "2026-09-18T10:43:42.405167Z"
+}

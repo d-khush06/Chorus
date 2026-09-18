@@ -94,34 +94,10 @@ Rules
 8. Never raise — return an error key in the result dict on failure.
 
 Output format
->>>>>>> fc981f9 (feat: implement Chorus full pipeline for General and Cyber modes)
 -------------
 {
   "fused_timeline": [
     {
-<<<<<<< HEAD
-      "scene_id":      int,
-      "start_seconds": float,
-      "end_seconds":   float,
-      "event_type":    str,
-      "content":       str,
-      "source_agent":  str | null,
-      "confidence":    float | null
-    }
-  ],
-  "conflicts": [
-    {
-      "scene_id":     int,
-      "time_range":   [float, float],
-      "source_a":     str,
-      "content_a":    str,
-      "source_b":     str,
-      "content_b":    str,
-      "conflict_type": str
-    }
-  ],
-  "scenes_with_no_signal": [int, ...]
-=======
       "scene_id": 0,
       "start_s": 0.0,
       "end_s": 12.4,
@@ -148,12 +124,10 @@ Output format
   "source_uri": "clip.mp4",
   "fused_at": "2026-09-16T14:00:00Z",
   "error": null
->>>>>>> fc981f9 (feat: implement Chorus full pipeline for General and Cyber modes)
 }
 
 Usage (library)
 ---------------
-<<<<<<< HEAD
   from fusion_agent import fuse_timeline
 
   result = fuse_timeline(
@@ -777,13 +751,24 @@ def _midpoint(start: float, end: float) -> float:
 
 
 def _find_scene_for_time(t: float, scenes: list) -> int:
-    """Return the scene_id whose [start_s, end_s] contains t. Falls back to 0."""
+    """Return the scene_id whose [start, end] window contains t. Falls back to 0.
+
+    Tolerates both scene schemas in the codebase:
+      * scene_segmentation.detect_scenes() emits start_seconds/end_seconds
+      * the fusion fallback scene (and older callers) use start_s/end_s
+    """
     for scene in scenes:
-        if scene["start_s"] <= t < scene["end_s"]:
+        s = scene.get("start_s", scene.get("start_seconds"))
+        e = scene.get("end_s", scene.get("end_seconds"))
+        if s is None or e is None:
+            continue
+        if s <= t < e:
             return scene["scene_id"]
     # If t >= last scene end, assign to last scene
-    if scenes and t >= scenes[-1]["end_s"]:
-        return scenes[-1]["scene_id"]
+    if scenes:
+        last_end = scenes[-1].get("end_s", scenes[-1].get("end_seconds"))
+        if last_end is not None and t >= last_end:
+            return scenes[-1]["scene_id"]
     return 0
 
 
@@ -801,10 +786,12 @@ def _estimate_frame_timestamps(frame_count: int, duration_s: Optional[float]) ->
 
 def _build_scene_entry(scene: dict) -> dict:
     """Build a blank fused timeline entry from a scene dict."""
+    start = scene.get("start_s", scene.get("start_seconds", 0.0))
+    end   = scene.get("end_s",   scene.get("end_seconds", 0.0))
     return {
-        "scene_id":    scene["scene_id"],
-        "start_s":     scene["start_s"],
-        "end_s":       scene["end_s"],
+        "scene_id":    scene.get("scene_id", 0),
+        "start_s":     float(start),
+        "end_s":       float(end),
         "vl_description": None,
         "asr_segments": [],
         "asr_text":     "",
@@ -867,6 +854,7 @@ def fuse_pipeline_outputs(
     geo_result: Optional[dict] = None,
     face_reid_result: Optional[dict] = None,
     alert_result: Optional[dict] = None,
+    verification_result: Optional[dict] = None,
 ) -> dict:
     """
     Merge all agent outputs into one unified fused timeline.
@@ -890,6 +878,7 @@ def fuse_pipeline_outputs(
     geo_result           : Result dict from geo_estimation_agent (cyber mode).
     face_reid_result     : Result dict from face_reid_agent (cyber mode).
     alert_result         : Result dict from alert_system (cyber mode).
+    verification_result  : Result dict from chorus_verification_mcp (Step 4b).
 
     Returns
     -------
@@ -1060,6 +1049,7 @@ def fuse_pipeline_outputs(
         "source_uri": source_uri,
         "fused_at": fused_at,
         "error": None,
+        "verification_result": verification_result,
     }
     if cyber_summary:
         result["cyber_summary"] = cyber_summary
@@ -1085,6 +1075,7 @@ def fuse_from_payload(
     geo_result: Optional[dict] = None,
     face_reid_result: Optional[dict] = None,
     alert_result: Optional[dict] = None,
+    verification_result: Optional[dict] = None,
 ) -> dict:
     """
     Convenience wrapper: builds fuse_pipeline_outputs call from a ChorusPayload.
@@ -1120,6 +1111,7 @@ def fuse_from_payload(
         geo_result=geo_result,
         face_reid_result=face_reid_result,
         alert_result=alert_result,
+        verification_result=verification_result,
     )
 
 

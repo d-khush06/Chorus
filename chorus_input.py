@@ -249,6 +249,136 @@ class InputRouter:
         return "text"
 
 
+def is_playlist_url(url: str) -> bool:
+    """Check if the provided URL is a YouTube or yt-dlp playlist."""
+    if not url or not isinstance(url, str):
+        return False
+    u = url.lower()
+    return "playlist?list=" in u or "&list=pl" in u or "?list=pl" in u or "youtube.com/playlist" in u
+
+
+def download_youtube_video(url: str, output_path: str = None) -> str:
+    """
+    Download a single YouTube video with robust 403-resilient parameters.
+    Returns the path to the downloaded local mp4 file.
+    """
+    import yt_dlp
+    import tempfile
+    import os
+    import hashlib
+
+    if not output_path:
+        temp_dir = tempfile.gettempdir()
+        vid_hash = hashlib.md5(url.encode()).hexdigest()[:10]
+        output_path = os.path.join(temp_dir, f"chorus_yt_{vid_hash}.mp4")
+
+    if os.path.exists(output_path) and os.path.getsize(output_path) > 100000:
+        print(f"  [YouTube Downloader] Using cached video: {output_path} ({os.path.getsize(output_path)} bytes)")
+        return output_path
+
+    print(f"  [YouTube Downloader] Ingesting video stream from {url}...")
+    ydl_opts = {
+        'format': 'best[ext=mp4][height<=720]/best[height<=720]/best',
+        'outtmpl': output_path,
+        'noplaylist': True,
+        'quiet': True,
+        'no_warnings': True,
+        'js_runtimes': {'node': {}},
+        'extractor_args': {
+            'youtube': {'player_client': ['ios', 'android', 'mweb']},
+        },
+    }
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        ydl.download([url])
+
+    if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
+        raise RuntimeError(f"Download completed but output file missing or empty: {output_path}")
+
+    print(f"  [YouTube Downloader] Video ready ({os.path.getsize(output_path)} bytes): {output_path}")
+    return output_path
+
+
+def resolve_playlist(playlist_url: str) -> list:
+    """
+    Rule 7 — Resolve a YouTube playlist (or any yt-dlp-supported playlist URL)
+    to a list of individual video metadata dicts without downloading any video.
+
+    Each returned dict contains:
+        {
+            "url":      str,   # direct watch URL for this video
+            "title":    str,   # video title
+            "video_id": str,   # YouTube video ID (or yt-dlp internal ID)
+        }
+
+    The 'noplaylist': True restriction present in the single-video download path
+    is intentionally absent here — playlist extraction is the whole point.
+
+    Parameters
+    ----------
+    playlist_url : Any yt-dlp-supported playlist URL, e.g.
+                   "https://www.youtube.com/playlist?list=PLxxxxx"
+
+    Returns
+    -------
+    list[dict]  — one entry per video in the playlist.
+                  Returns [] and prints a warning on any yt_dlp error.
+    """
+    try:
+        import yt_dlp
+    except ImportError:
+        print(
+            "  [resolve_playlist] yt-dlp not installed. "
+            "Run: pip install yt-dlp"
+        )
+        return []
+
+    ydl_opts = {
+        # extract_flat='in_playlist' fetches only metadata — no downloads
+        "extract_flat": "in_playlist",
+        "quiet":        True,
+        "ignoreerrors": True,   # skip unavailable / private videos gracefully
+        # NOTE: 'noplaylist' is intentionally NOT set here — we want the playlist
+    }
+
+    entries = []
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(playlist_url, download=False)
+
+        if info is None:
+            print(f"  [resolve_playlist] No info returned for: {playlist_url}")
+            return []
+
+        raw_entries = info.get("entries") or []
+
+        for entry in raw_entries:
+            if entry is None:
+                continue  # private / unavailable video — ignoreerrors skips but leaves None
+
+            video_id = entry.get("id") or entry.get("url", "")
+            url      = entry.get("url") or entry.get("webpage_url") or ""
+
+            # Normalise short IDs to full watch URLs
+            if url and not url.startswith("http") and len(url) == 11:
+                url = f"https://www.youtube.com/watch?v={url}"
+
+            entries.append({
+                "url":      url,
+                "title":    entry.get("title") or entry.get("id") or "Untitled",
+                "video_id": video_id,
+            })
+
+        print(
+            f"  [resolve_playlist] Resolved {len(entries)} video(s) "
+            f"from playlist: {playlist_url}"
+        )
+    except Exception as exc:
+        print(f"  [resolve_playlist] WARNING: yt-dlp extraction failed: {exc}")
+        return []
+
+    return entries
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # YOUTUBE ADAPTER (Playwright Scraper)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -265,36 +395,7 @@ class YouTubeAdapter:
         else:
             # DIRECT YOUTUBE URL -> Download and extract frames
             try:
-                import yt_dlp
-                import tempfile
-                import os
-                
-                print(f"  [YouTube Adapter] Downloading video from {source_uri}...")
-                temp_dir = tempfile.gettempdir()
-                out_file = os.path.join(temp_dir, "temp_yt_video.mp4")
-                
-                if os.path.exists(out_file):
-                    os.remove(out_file)
-                
-                ydl_opts = {
-                    # Prefer one progressive stream so FFmpeg is not required
-                    # merely to join separate video and audio tracks.
-                    'format': 'best[ext=mp4][height<=720]/best[height<=720]/best',
-                    'outtmpl': out_file,
-                    'noplaylist': True,
-                    'quiet': True,
-                    # Node is installed on this machine. YouTube now requires a
-                    # JavaScript runtime for many format URLs/signatures.
-                    'js_runtimes': {'node': {}},
-                    'remote_components': {'ejs:github'},
-                    'extractor_args': {
-                        'youtube': {'player_client': ['web', 'android']},
-                    },
-                }
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    ydl.download([source_uri])
-                
-                print(f"  [YouTube Adapter] Video downloaded. Handing off to local processor...")
+                out_file = download_youtube_video(source_uri)
                 local_adapter = LocalAdapter()
                 payload = local_adapter.process(out_file, "local_video")
                 

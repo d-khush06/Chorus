@@ -30,6 +30,8 @@ app.use(passport.session());
 
 // Mount routers
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/cases', require('./routes/cases'));
+app.use('/api/analyze', require('./routes/analyze'));
 
 // Root route
 app.get('/', (req, res) => {
