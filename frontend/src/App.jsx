@@ -178,7 +178,7 @@ function EvidenceRoom() {
               <span>{useContext(AuthContext).user?.email?.split('@')[0] || 'User'}</span>
               <button
                 className="ev-signout-btn"
-                onClick={() => { logout(); navigate('/login'); }}
+                onClick={() => { logout(); navigate('/'); }}
               >
                 Sign Out
               </button>
