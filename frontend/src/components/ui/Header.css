@@ -1,0 +1,80 @@
+/* Header.css — Unified Header Component */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--header-height);
+  padding: 0 var(--space-4);
+  background: rgba(10, 10, 12, 0.65);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border-bottom: 1px solid var(--color-border);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  gap: var(--space-4);
+}
+
+.header-left,
+.header-center,
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.header-left { min-width: 160px; }
+.header-center { flex: 1; justify-content: center; }
+.header-right { min-width: 160px; justify-content: flex-end; }
+
+/* ─── Brand ─── */
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-text);
+  text-decoration: none;
+  font-weight: var(--font-bold);
+  font-size: var(--text-lg);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-md);
+  transition: background var(--transition-fast);
+}
+
+.header-brand:hover { background: var(--glass-bg-hover); }
+
+.header-logo { font-size: 22px; line-height: 1; }
+
+.header-title { white-space: nowrap; }
+
+/* ─── Buttons ─── */
+
+.header-menu-btn { flex-shrink: 0; }
+
+.header-evidence-btn {
+  font-weight: var(--font-medium);
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+  box-shadow: var(--glass-shadow-subtle);
+}
+
+.header-evidence-btn:hover {
+  background: var(--glass-bg-hover);
+  border-color: var(--glass-border-light);
+  box-shadow: var(--glass-shadow);
+  transform: translateY(-1px);
+}
+
+.header-new-btn,
+.header-settings-btn { flex-shrink: 0; }
+
+/* ─── Responsive ─── */
+
+@media (max-width: 768px) {
+  .header-left { min-width: auto; }
+  .header-right { min-width: auto; }
+  .header-evidence-btn span { display: none; }
+  .header-brand .header-title { display: none; }
+}

@@ -18,6 +18,7 @@ import FusedEventCard from './components/FusedEventCard.jsx';
 import ConflictCard from './components/ConflictCard.jsx';
 import AnalyticsPage from './pages/AnalyticsPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
+import HomePage from './pages/HomePage.jsx';
 import './App.css';
 
 // Private Route Wrapper
@@ -122,49 +123,49 @@ function EvidenceRoom() {
 
       {/* ── Main Pane ── */}
       <main className="main-pane" aria-label="Case review">
-        {/* Header bar */}
+        {/* Modern Header bar */}
         <div className="main-pane__header">
-          <div className="main-pane__case-id">
-            {selectedCase
-              ? <span className="mono text-2" title={selectedCase.case_id}>
-                  {selectedCase.case_id}
-                </span>
-              : <span className="mono text-3">No case selected</span>
-            }
+          <div className="main-pane__header-left">
+            <button
+              className="ev-back-btn"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate('/analytics');
+                setTimeout(() => {
+                  if (window.location.pathname !== '/analytics') {
+                    window.location.href = '/analytics';
+                  }
+                }, 50);
+              }}
+              title="Return to AI Chat & Cyber Mode"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+              <span>AI Chat & Cyber</span>
+            </button>
+
+            <div className="ev-brand-pill">
+              <span className="ev-brand-title">Chorus</span>
+              <span className="ev-brand-sub">Evidence Room</span>
+            </div>
+
+            {selectedCase && (
+              <div className="ev-case-pill">
+                <span className="ev-case-label">{selectedCase.case_id}</span>
+                {selectedCase.title && <span className="ev-case-name">— {selectedCase.title}</span>}
+              </div>
+            )}
           </div>
+
           <div className="main-pane__header-actions">
-            {/* Conflict count badge */}
             {timelineData?.conflicts?.length > 0 && (
-              <span className="conflict-count-badge mono">
-                ⚑ {timelineData.conflicts.length} conflict{timelineData.conflicts.length !== 1 ? 's' : ''}
+              <span className="conflict-count-badge">
+                ⚑ {timelineData.conflicts.length} Conflict{timelineData.conflicts.length !== 1 ? 's' : ''}
               </span>
             )}
-            {/* Analytics Platform nav button */}
-            <button
-              id="open-analytics-btn"
-              className="analytics-nav-btn"
-              onClick={() => navigate('/analytics')}
-              aria-label="Open Universal Video Analytics Platform"
-            >
-              <span style={{ fontSize: 14 }}>⬡</span>
-              <span>Video Analytics</span>
-            </button>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: '12px', paddingLeft: '12px', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
-              <span className="mono text-3" style={{ fontSize: '13px' }}>
-                {useContext(AuthContext).user?.email || 'Logged In'}
-              </span>
-              <button
-                className="analytics-nav-btn"
-                onClick={() => { logout(); navigate('/login'); }}
-                style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', borderColor: 'rgba(239,68,68,0.3)' }}
-              >
-                Sign Out
-              </button>
-            </div>
-            {/* Right panel toggle (shown when drawer mode) */}
+
             {isNarrow && selectedCase && (
               <button
-                className="manifest-drawer-toggle mono"
+                className="manifest-drawer-toggle"
                 onClick={() => setRightDrawerOpen(v => !v)}
                 aria-label="Toggle manifest panel"
                 aria-expanded={rightDrawerOpen}
@@ -172,6 +173,16 @@ function EvidenceRoom() {
                 Manifest
               </button>
             )}
+
+            <div className="ev-user-badge">
+              <span>{useContext(AuthContext).user?.email?.split('@')[0] || 'User'}</span>
+              <button
+                className="ev-signout-btn"
+                onClick={() => { logout(); navigate('/login'); }}
+              >
+                Sign Out
+              </button>
+            </div>
           </div>
         </div>
 
@@ -281,24 +292,26 @@ function buildMergedTimeline(timelineData) {
 export default function App() {
   const navigate = useNavigate();
   return (
-    <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/auth/callback" element={<LoginPage />} />
-      <Route path="/analytics" element={
-        <PrivateRoute>
-          <AnalyticsPage onBack={() => navigate('/evidence')} />
-        </PrivateRoute>
-      } />
-      <Route path="/evidence" element={
-        <PrivateRoute>
-          <EvidenceRoom />
-        </PrivateRoute>
-      } />
-      <Route path="/" element={
-        <PrivateRoute>
-          <Navigate to="/analytics" replace />
-        </PrivateRoute>
-      } />
-    </Routes>
+    <div className="global-app-container">
+      {/* Global Background Ambient Orbs */}
+      <div className="global-bg-orb orb-1"></div>
+      <div className="global-bg-orb orb-2"></div>
+      
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/auth/callback" element={<LoginPage />} />
+        <Route path="/analytics" element={
+          <PrivateRoute>
+            <AnalyticsPage onBack={() => navigate('/evidence')} />
+          </PrivateRoute>
+        } />
+        <Route path="/evidence" element={
+          <PrivateRoute>
+            <EvidenceRoom />
+          </PrivateRoute>
+        } />
+        <Route path="/" element={<HomePage />} />
+      </Routes>
+    </div>
   );
 }

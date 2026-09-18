@@ -1,0 +1,116 @@
+/* Badge.css — Unified Badge Component */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-family: var(--font-mono);
+  font-weight: var(--font-semibold);
+  letter-spacing: 0.06em;
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+}
+
+/* ─── Sizes ─── */
+
+.badge-xs {
+  font-size: 8px;
+  padding: 1px 6px;
+  height: 16px;
+}
+.badge-sm {
+  font-size: var(--text-xs);
+  padding: 2px 8px;
+  height: 20px;
+}
+.badge-md {
+  font-size: var(--text-xs);
+  padding: 3px 10px;
+  height: 24px;
+}
+.badge-lg {
+  font-size: var(--text-sm);
+  padding: 4px 12px;
+  height: 28px;
+}
+
+/* ─── Variants ─── */
+
+.badge-neutral {
+  background: var(--glass-bg);
+  border-color: var(--glass-border);
+  color: var(--color-text-dim);
+}
+
+.badge-primary {
+  background: rgba(37, 99, 235, 0.15);
+  border-color: rgba(37, 99, 235, 0.3);
+  color: #93c5fd;
+}
+
+.badge-cyber {
+  background: var(--color-cyber-dim);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+.badge-amber {
+  background: var(--color-amber-dim);
+  border-color: rgba(249, 191, 36, 0.3);
+  color: #fde047;
+}
+
+.badge-success {
+  background: var(--color-success-dim);
+  border-color: rgba(52, 211, 153, 0.3);
+  color: #6ee7b7;
+}
+
+.badge-cyan {
+  background: var(--color-cyan-dim);
+  border-color: rgba(6, 182, 212, 0.3);
+  color: #67e8f9;
+}
+
+.badge-purple {
+  background: var(--color-purple-dim);
+  border-color: rgba(168, 85, 247, 0.3);
+  color: #d8b4fe;
+}
+
+/* ─── Dot Indicator ─── */
+
+.badge-dot { padding-left: var(--space-3); }
+
+.badge-dot-indicator {
+  position: relative;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.badge-primary .badge-dot-indicator { background: var(--color-primary); box-shadow: 0 0 6px var(--color-primary-glow); }
+.badge-cyber .badge-dot-indicator { background: var(--color-cyber); box-shadow: 0 0 6px var(--color-cyber-glow); }
+.badge-amber .badge-dot-indicator { background: var(--color-amber); box-shadow: 0 0 6px var(--color-amber-glow); }
+.badge-success .badge-dot-indicator { background: var(--color-success); box-shadow: 0 0 6px var(--color-success-glow); }
+.badge-cyan .badge-dot-indicator { background: var(--color-cyan); box-shadow: 0 0 6px var(--color-cyan-glow); }
+.badge-purple .badge-dot-indicator { background: var(--color-purple); box-shadow: 0 0 6px var(--color-purple-glow); }
+.badge-neutral .badge-dot-indicator { background: var(--color-text-muted); }
+
+/* ─── Severity-specific (for cyber mode) ─── */
+
+.badge-critical { background: rgba(239, 68, 68, 0.2); border-color: var(--color-critical); color: var(--color-critical); }
+.badge-high { background: rgba(249, 115, 22, 0.2); border-color: var(--color-high); color: var(--color-high); }
+.badge-medium { background: rgba(251, 191, 36, 0.2); border-color: var(--color-medium); color: var(--color-medium); }
+.badge-low { background: rgba(52, 211, 153, 0.2); border-color: var(--color-low); color: var(--color-low); }
+
+/* ─── Pill variant (for tags) ─── */
+
+.badge-pill {
+  border-radius: var(--radius-md);
+  padding-left: var(--space-2);
+  padding-right: var(--space-2);
+}

@@ -1,0 +1,146 @@
+/* Modal.css — Unified Modal Component */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: var(--glass-blur-heavy);
+  -webkit-backdrop-filter: var(--glass-blur-heavy);
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  animation: modalFadeIn var(--transition-base) ease-out;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-card {
+  width: 100%;
+  background: var(--color-surface);
+  backdrop-filter: var(--glass-blur-heavy);
+  -webkit-backdrop-filter: var(--glass-blur-heavy);
+  border: 1px solid var(--glass-border-light);
+  box-shadow: var(--glass-shadow-elevated);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  animation: modalCardPop var(--transition-slow) cubic-bezier(0.16, 1, 0.3, 1);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes modalCardPop {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+/* ─── Sizes ─── */
+
+.modal-sm { max-width: 380px; }
+.modal-md { max-width: 480px; }
+.modal-lg { max-width: 640px; }
+.modal-xl { max-width: 800px; }
+.modal-full { max-width: 95vw; max-height: 95vh; }
+
+/* ─── Sections ─── */
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.modal-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+  margin: 0;
+}
+
+.modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-full);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  color: var(--color-text-dim);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.modal-close:hover {
+  background: var(--glass-bg-hover);
+  border-color: var(--glass-border-light);
+  color: var(--color-text);
+}
+
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-6);
+}
+
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  border-top: 1px solid var(--glass-border);
+}
+
+/* ─── Confirmation Modal ─── */
+
+.modal-confirm .modal-body {
+  text-align: center;
+  padding-top: var(--space-8);
+  padding-bottom: var(--space-8);
+}
+
+.modal-confirm-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto var(--space-4);
+  font-size: 28px;
+}
+
+.modal-confirm-icon.warning { background: var(--color-amber-dim); color: var(--color-amber); }
+.modal-confirm-icon.danger { background: var(--color-cyber-dim); color: var(--color-cyber); }
+.modal-confirm-icon.info { background: var(--color-cyan-dim); color: var(--color-cyan); }
+.modal-confirm-icon.success { background: var(--color-success-dim); color: var(--color-success); }
+
+.modal-confirm-title {
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+  margin: 0 0 var(--space-2);
+}
+
+.modal-confirm-message {
+  font-size: var(--text-base);
+  color: var(--color-text-dim);
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* ─── Form Modal ─── */
+
+.modal-form .modal-body { padding-bottom: var(--space-2); }
+
+.modal-form-fields { display: flex; flex-direction: column; gap: var(--space-4); }
+
+.modal-form-actions { justify-content: flex-end; }

@@ -7,100 +7,179 @@
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
-  background: var(--bg);
+  background: transparent;
   min-width: 0;
 }
 
-/* Main pane top header bar */
+/* Main pane top header bar (Liquid Glass) */
 .main-pane__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 var(--space-5);
-  height: 48px;
+  padding: 0 var(--space-4);
+  height: 54px;
   border-bottom: 1px solid var(--border);
-  background: var(--surface);
+  background: var(--surface-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
   flex-shrink: 0;
-  gap: var(--space-4);
+  gap: var(--space-3);
   min-width: 0;
+  z-index: 20;
 }
 
-.main-pane__case-id {
-  flex: 1;
+.main-pane__header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   min-width: 0;
   overflow: hidden;
 }
 
-.main-pane__case-id .mono {
+/* Return to AI Assistant button (Liquid Glass) */
+.ev-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--surface-alt);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05), 0 4px 12px rgba(0, 0, 0, 0.1);
+  color: var(--text-1);
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}
+
+.ev-back-btn:hover {
+  background: var(--accent);
+  border-color: var(--text-3);
+  box-shadow: inset 0 1px 2px rgba(255, 255, 255, 0.1), 0 6px 18px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+.ev-brand-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ev-brand-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.ev-brand-sub {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-2);
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  padding: 1px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.ev-case-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-alt);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--border);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.05);
+  padding: 4px 12px;
+  border-radius: 6px;
   font-size: 12px;
-  display: block;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
+.ev-case-label {
+  font-family: var(--mono-font);
+  font-weight: 600;
+  color: #60a5fa;
+}
+
+.ev-case-name {
+  color: var(--text-2);
+}
+
 .main-pane__header-actions {
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  gap: 10px;
   flex-shrink: 0;
 }
 
-/* Conflict count badge in header */
+/* Conflict count badge in header (Liquid Glass) */
 .conflict-count-badge {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.05em;
-  color: var(--red);
-  padding: 2px 8px;
-  border-radius: 3px;
-  background: rgba(229, 72, 77, 0.10);
-  border: 1px solid rgba(229, 72, 77, 0.20);
+  letter-spacing: 0.02em;
+  color: #f87171;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1), 0 0 12px rgba(239, 68, 68, 0.15);
 }
 
-/* Manifest drawer toggle button */
+/* Manifest drawer toggle button (Liquid Glass) */
 .manifest-drawer-toggle {
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 500;
-  color: var(--text-3);
-  padding: 4px 10px;
+  color: var(--text-2);
+  padding: 6px 12px;
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  transition: color var(--transition-fast), border-color var(--transition-fast);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  border-radius: 6px;
+  background: var(--surface-alt);
+  backdrop-filter: blur(12px);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  letter-spacing: 0.03em;
 }
 
 .manifest-drawer-toggle:hover {
   color: var(--text-1);
+  background: var(--accent);
   border-color: var(--text-3);
 }
 
-/* ── Analytics Platform nav button ── */
-.analytics-nav-btn {
+.ev-user-badge {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  font-family: var(--sans-font);
-  letter-spacing: 0.04em;
-  color: #a5b4fc;
-  padding: 5px 12px;
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  border-radius: var(--radius-md);
-  background: rgba(99, 102, 241, 0.08);
-  cursor: pointer;
-  transition: all 150ms ease;
-  white-space: nowrap;
+  gap: 8px;
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
+  font-size: 12.5px;
+  color: var(--text-2);
 }
 
-.analytics-nav-btn:hover {
-  background: rgba(99, 102, 241, 0.16);
-  border-color: rgba(99, 102, 241, 0.5);
-  color: #c7d2fe;
-  box-shadow: 0 0 12px rgba(99, 102, 241, 0.2);
+.ev-signout-btn {
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+}
+
+.ev-signout-btn:hover {
+  background: rgba(239, 68, 68, 0.15);
 }
 
 /* ── Timeline Event List ── */

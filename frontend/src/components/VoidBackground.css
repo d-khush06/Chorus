@@ -1,0 +1,37 @@
+.void-background-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  z-index: 0;
+  background-color: #000000; /* Pure OLED Black */
+  pointer-events: none;
+}
+
+.void-canvas-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.void-canvas-wrapper canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0.8; /* Keep the dust subtle */
+}
+
+/* Deep vignette to fade the edges into absolute blackness */
+.void-vignette {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, transparent 20%, #000000 85%);
+  z-index: 1;
+}

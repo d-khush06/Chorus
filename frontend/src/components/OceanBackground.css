@@ -1,0 +1,18 @@
+.ocean-background-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  z-index: 0;
+  background: radial-gradient(circle at center, #0a1128 0%, #000000 100%);
+  pointer-events: none;
+}
+
+.ocean-background-container canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0.6;
+}
