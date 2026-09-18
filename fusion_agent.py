@@ -94,34 +94,10 @@ Rules
 8. Never raise — return an error key in the result dict on failure.
 
 Output format
->>>>>>> fc981f9 (feat: implement Chorus full pipeline for General and Cyber modes)
 -------------
 {
   "fused_timeline": [
     {
-<<<<<<< HEAD
-      "scene_id":      int,
-      "start_seconds": float,
-      "end_seconds":   float,
-      "event_type":    str,
-      "content":       str,
-      "source_agent":  str | null,
-      "confidence":    float | null
-    }
-  ],
-  "conflicts": [
-    {
-      "scene_id":     int,
-      "time_range":   [float, float],
-      "source_a":     str,
-      "content_a":    str,
-      "source_b":     str,
-      "content_b":    str,
-      "conflict_type": str
-    }
-  ],
-  "scenes_with_no_signal": [int, ...]
-=======
       "scene_id": 0,
       "start_s": 0.0,
       "end_s": 12.4,
@@ -148,12 +124,10 @@ Output format
   "source_uri": "clip.mp4",
   "fused_at": "2026-09-16T14:00:00Z",
   "error": null
->>>>>>> fc981f9 (feat: implement Chorus full pipeline for General and Cyber modes)
 }
 
 Usage (library)
 ---------------
-<<<<<<< HEAD
   from fusion_agent import fuse_timeline
 
   result = fuse_timeline(

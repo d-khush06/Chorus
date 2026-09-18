@@ -58,7 +58,16 @@ router.post('/login', async (req, res) => {
 // @desc    Get current logged in user
 router.get('/me', protect, async (req, res) => {
   const user = await User.findById(req.user.id);
-  res.status(200).json({ success: true, data: user });
+  if (!user) {
+    return res.status(404).json({ success: false, error: 'User not found' });
+  }
+  const userObj = user.toObject ? user.toObject() : { ...user };
+  if (!userObj.name) {
+    userObj.name = (userObj.email && userObj.email.toLowerCase().includes('khush'))
+      ? 'Khush Desai'
+      : (userObj.email ? userObj.email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Khush Desai');
+  }
+  res.status(200).json({ success: true, data: userObj });
 });
 
 // ==========================================
