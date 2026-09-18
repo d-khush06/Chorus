@@ -1,0 +1,46 @@
+.spotlight-bg-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none; /* Let clicks pass through */
+  background-color: #000000;
+  --mouse-x: 50vw;
+  --mouse-y: 50vh;
+}
+
+.spotlight-bg-base {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #000000;
+  z-index: 1;
+}
+
+.spotlight-grid {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 2;
+  /* Draw a very subtle dark grey dot grid */
+  background-image: radial-gradient(rgba(255, 255, 255, 0.4) 1px, transparent 1px);
+  background-size: 32px 32px;
+  
+  /* The magic: Mask the grid so it only shows up in a circle around the mouse */
+  -webkit-mask-image: radial-gradient(
+    600px circle at var(--mouse-x) var(--mouse-y),
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 0) 80%
+  );
+  mask-image: radial-gradient(
+    600px circle at var(--mouse-x) var(--mouse-y),
+    rgba(0, 0, 0, 1) 0%,
+    rgba(0, 0, 0, 0) 80%
+  );
+}

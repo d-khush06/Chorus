@@ -1,0 +1,104 @@
+/* Avatar.css — Unified Avatar Component */
+
+.avatar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+}
+
+.avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-sans);
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-purple));
+}
+
+/* ─── Sizes ─── */
+
+.avatar-xs { width: 24px; height: 24px; font-size: 9px; }
+.avatar-sm { width: 32px; height: 32px; font-size: 11px; }
+.avatar-md { width: 40px; height: 40px; font-size: 14px; }
+.avatar-lg { width: 48px; height: 48px; font-size: 16px; }
+.avatar-xl { width: 64px; height: 64px; font-size: 22px; }
+.avatar-2xl { width: 96px; height: 96px; font-size: 32px; }
+
+/* ─── Status Indicators ─── */
+
+.avatar-status-online .avatar-status-dot {
+  background: var(--color-success);
+  box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-success);
+}
+
+.avatar-status-busy .avatar-status-dot {
+  background: var(--color-critical);
+  box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-critical);
+}
+
+.avatar-status-away .avatar-status-dot {
+  background: var(--color-amber);
+  box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-amber);
+}
+
+.avatar-status-offline .avatar-status-dot {
+  background: var(--color-text-muted);
+  box-shadow: 0 0 0 2px var(--color-bg), 0 0 0 4px var(--color-text-muted);
+}
+
+.avatar-status-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 25%;
+  height: 25%;
+  min-width: 8px;
+  min-height: 8px;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--color-bg);
+}
+
+/* ─── Overlap Group ─── */
+
+.avatar-group { display: inline-flex; }
+
+.avatar-overlap {
+  margin-left: -8px;
+  border: 2px solid var(--color-bg);
+  transition: transform var(--transition-fast);
+}
+
+.avatar-overlap:first-child { margin-left: 0; }
+
+.avatar-overlap:hover {
+  transform: translateY(-2px);
+  z-index: 10;
+}
+
+.avatar-more {
+  background: var(--glass-bg);
+  color: var(--color-text-dim);
+  border-color: var(--glass-border);
+}
+
+.avatar-more .avatar-fallback {
+  background: transparent;
+  color: var(--color-text-dim);
+  font-size: inherit;
+  font-weight: var(--font-medium);
+}

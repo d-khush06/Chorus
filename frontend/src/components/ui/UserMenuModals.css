@@ -1,0 +1,417 @@
+/* UserMenuModals.css — Normal Solid Dark Modals (No Glassmorphism) */
+
+.umm-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 16px;
+  animation: ummFadeIn 0.15s ease-out;
+}
+
+@keyframes ummFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.umm-modal {
+  width: 100%;
+  max-width: 520px;
+  background: #1e1e1e;
+  border: 1px solid #333333;
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: 85vh;
+  animation: ummScaleIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  color: #ececec;
+}
+
+.umm-modal-wide {
+  max-width: 660px;
+}
+
+@keyframes ummScaleIn {
+  from {
+    transform: scale(0.97) translateY(6px);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Header */
+.umm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #2e2e2e;
+  background: #1a1a1a;
+}
+
+.umm-header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.umm-header-icon {
+  color: #60a5fa;
+  display: flex;
+  align-items: center;
+}
+
+.umm-header h2 {
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.umm-close-btn {
+  background: transparent;
+  border: none;
+  color: #8e8e93;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.umm-close-btn:hover {
+  background: #2a2a2a;
+  color: #ffffff;
+}
+
+/* Body */
+.umm-body {
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background: #1e1e1e;
+}
+
+/* Footer */
+.umm-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid #2e2e2e;
+  background: #1a1a1a;
+}
+
+.umm-btn-cancel {
+  background: transparent;
+  border: 1px solid #383838;
+  color: #cccccc;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.umm-btn-cancel:hover {
+  background: #262626;
+  color: #ffffff;
+}
+
+.umm-btn-primary {
+  background: #2563eb;
+  border: 1px solid #3b82f6;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.umm-btn-primary:hover {
+  background: #1d4ed8;
+}
+
+/* Form Styles */
+.umm-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.umm-form-group label {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #a1a1aa;
+}
+
+.umm-input {
+  background: #27272a;
+  border: 1px solid #383838;
+  color: #ffffff;
+  font-size: 13.5px;
+  padding: 9px 12px;
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.umm-input:focus {
+  border-color: #3b82f6;
+}
+
+/* Profile Specific */
+.umm-profile-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px;
+  background: #252528;
+  border: 1px solid #333333;
+  border-radius: 8px;
+}
+
+.umm-avatar-large {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  border: 2px solid #3b82f6;
+  display: block;
+}
+
+.umm-profile-meta h3 {
+  margin: 0 0 4px 0;
+  font-size: 15.5px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.umm-profile-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #60a5fa;
+  background: #1e293b;
+  border: 1px solid #334155;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.umm-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* Settings Tabs */
+.umm-tabs {
+  display: flex;
+  border-bottom: 1px solid #2e2e2e;
+  padding: 0 20px;
+  gap: 4px;
+  background: #1a1a1a;
+}
+
+.umm-tab-btn {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #8e8e93;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  transition: all 0.15s ease;
+}
+
+.umm-tab-btn:hover {
+  color: #ffffff;
+}
+
+.umm-tab-btn.active {
+  color: #60a5fa;
+  border-bottom-color: #3b82f6;
+}
+
+/* Toggle Option Row */
+.umm-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: #242426;
+  border: 1px solid #333333;
+  border-radius: 8px;
+}
+
+.umm-toggle-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.umm-toggle-title {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #ffffff;
+}
+
+.umm-toggle-desc {
+  font-size: 11.5px;
+  color: #9ca3af;
+}
+
+/* Custom Switch */
+.umm-switch {
+  position: relative;
+  display: inline-block;
+  width: 38px;
+  height: 22px;
+  flex-shrink: 0;
+}
+
+.umm-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.umm-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: #3f3f46;
+  transition: 0.15s;
+  border-radius: 22px;
+}
+
+.umm-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.15s;
+  border-radius: 50%;
+}
+
+.umm-switch input:checked + .umm-slider {
+  background-color: #2563eb;
+}
+
+.umm-switch input:checked + .umm-slider:before {
+  transform: translateX(16px);
+}
+
+/* Help Cards */
+.umm-help-search {
+  margin-bottom: 4px;
+}
+
+.umm-help-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.umm-help-card {
+  padding: 14px;
+  background: #242426;
+  border: 1px solid #333333;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.umm-help-card:hover {
+  background: #2a2a2d;
+  border-color: #444444;
+}
+
+.umm-help-card-icon {
+  color: #60a5fa;
+  margin-bottom: 2px;
+}
+
+.umm-help-card-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.umm-help-card-desc {
+  font-size: 12px;
+  color: #9ca3af;
+  line-height: 1.4;
+}
+
+/* Shortcuts List */
+.umm-shortcut-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-bottom: 1px solid #2e2e2e;
+  font-size: 12.5px;
+  color: #d1d5db;
+}
+
+.umm-shortcut-item:last-child {
+  border-bottom: none;
+}
+
+.umm-kbd {
+  background: #27272a;
+  border: 1px solid #3f3f46;
+  border-radius: 4px;
+  padding: 2px 7px;
+  font-size: 11px;
+  font-family: monospace;
+  color: #e4e4e7;
+}
+
+/* Status Banner */
+.umm-status-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #14291e;
+  border: 1px solid #166534;
+  border-radius: 8px;
+  font-size: 12.5px;
+  color: #4ade80;
+}
+
+.umm-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  display: inline-block;
+  margin-right: 6px;
+}

@@ -4,7 +4,7 @@
   gap: var(--space-4);
   padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--border);
-  transition: background var(--transition-fast);
+  transition: all 0.15s ease;
 }
 
 .fused-event:hover {
@@ -64,11 +64,30 @@
 }
 
 /* Functional color on specific types */
-.fused-event__type-tag--speech    { color: var(--text-2); border-color: var(--border); }
-.fused-event__type-tag--diarization { color: var(--text-2); border-color: var(--border); }
-.fused-event__type-tag--object    { color: var(--text-2); border-color: var(--border); }
-.fused-event__type-tag--text      { color: var(--text-2); border-color: var(--border); }
-.fused-event__type-tag--no_signal { color: var(--text-3); border-color: transparent; }
+.fused-event__type-tag--speech {
+  color: var(--text-2);
+  border-color: var(--border);
+}
+
+.fused-event__type-tag--diarization {
+  color: var(--text-2);
+  border-color: var(--border);
+}
+
+.fused-event__type-tag--object {
+  color: var(--text-2);
+  border-color: var(--border);
+}
+
+.fused-event__type-tag--text {
+  color: var(--text-2);
+  border-color: var(--border);
+}
+
+.fused-event__type-tag--no_signal {
+  color: var(--text-3);
+  border-color: transparent;
+}
 
 .fused-event__source {
   font-size: 10px;

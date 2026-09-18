@@ -1,6 +1,7 @@
 import { useState, useContext, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import AuthContext from '../context/AuthContext';
+import { Check } from 'lucide-react';
 import './LoginPage.css';
 
 export default function LoginPage() {
@@ -13,6 +14,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   // Password strength calculation
@@ -26,6 +28,11 @@ export default function LoginPage() {
     return score;
   };
   const strengthScore = calculateStrength(password);
+
+  const hasLength = password.length >= 8;
+  const hasUpper = /[A-Z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasSpecial = /[^A-Za-z0-9]/.test(password);
 
   // Handle OAuth Callback
   useEffect(() => {
@@ -44,6 +51,7 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setPasswordError('');
     setSubmitting(true);
     
     try {
@@ -51,11 +59,11 @@ export default function LoginPage() {
       if (isRegister) {
         if (password !== confirmPassword) {
           setSubmitting(false);
-          return setError('Passwords do not match');
+          return setPasswordError('Passwords do not match');
         }
-        if (strengthScore < 2) {
+        if (!hasLength || !hasUpper || !hasSpecial) {
           setSubmitting(false);
-          return setError('Password is too weak (add uppercase, numbers, or symbols)');
+          return setPasswordError('Password must be at least 8 characters, and include 1 capital letter and 1 special character.');
         }
         result = await register(email, password);
       } else {
@@ -87,11 +95,11 @@ export default function LoginPage() {
       <div className="ap-bg" aria-hidden="true" />
       
       <div className="ap-auth-container ap-anim-fade">
-        <div className="ap-logo" style={{ justifyContent: 'center', marginBottom: '24px' }}>
-          <svg viewBox="0 0 24 24" fill="none" className="ap-logo-svg" style={{ width: '28px', height: '28px' }}>
+        <div className="ap-logo" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '24px' }}>
+          <svg viewBox="0 0 24 24" fill="none" className="ap-logo-svg" style={{ width: '28px', height: '28px', color: 'var(--text-1)' }}>
             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
-          <span className="ap-logo-text" style={{ fontSize: '20px' }}>UNIVANCE</span>
+          <span className="ap-logo-text" style={{ fontSize: '22px', color: 'var(--text-1)', fontWeight: 'bold', letterSpacing: '-0.5px' }}>Chorus</span>
         </div>
         
         <h1 className="ap-auth-title">{isRegister ? 'Create an account' : 'Welcome back'}</h1>
@@ -130,16 +138,19 @@ export default function LoginPage() {
             <label htmlFor="password">Password</label>
             <input 
               type="password" id="password" 
-              value={password} onChange={e => setPassword(e.target.value)} 
+              value={password} onChange={e => { setPassword(e.target.value); setPasswordError(''); }} 
               required placeholder="••••••••" 
+              style={passwordError ? { borderColor: 'var(--red)' } : {}}
             />
+            {passwordError && <div className="ap-field-error">{passwordError}</div>}
             {isRegister && (
               <div className="ap-password-strength">
-                <div className="ap-strength-bars">
-                  <div className={`ap-strength-bar ${strengthScore >= 1 ? (strengthScore < 3 ? 'weak' : 'strong') : ''}`} />
-                  <div className={`ap-strength-bar ${strengthScore >= 2 ? (strengthScore < 3 ? 'medium' : 'strong') : ''}`} />
-                  <div className={`ap-strength-bar ${strengthScore >= 3 ? 'strong' : ''}`} />
-                  <div className={`ap-strength-bar ${strengthScore >= 4 ? 'strong' : ''}`} />
+                <div className="ap-strength-track">
+                  <div 
+                    className="ap-strength-fill" 
+                    data-score={strengthScore}
+                    style={{ width: `${(strengthScore / 4) * 100}%` }}
+                  />
                 </div>
                 <span className="ap-strength-text">
                   {strengthScore === 0 && 'Enter password'}
@@ -169,7 +180,7 @@ export default function LoginPage() {
 
         <p className="ap-auth-switch">
           {isRegister ? 'Already have an account?' : "Don't have an account?"}
-          <button type="button" onClick={() => { setIsRegister(!isRegister); setError(''); }}>
+          <button type="button" onClick={() => { setIsRegister(!isRegister); setError(''); setPasswordError(''); }}>
             {isRegister ? 'Sign in' : 'Sign up'}
           </button>
         </p>

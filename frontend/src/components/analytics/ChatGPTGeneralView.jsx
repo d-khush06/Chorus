@@ -1,104 +1,99 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
+import FusedEventCard from '../FusedEventCard.jsx';
+import UserProfileModal from '../ui/UserProfileModal.jsx';
+import AppSettingsModal from '../ui/AppSettingsModal.jsx';
+import HelpSupportModal from '../ui/HelpSupportModal.jsx';
 import AuthContext from '../../context/AuthContext';
 import './ChatGPTGeneralView.css';
-import { Sparkles, MessageSquare, X, Folder, ArrowLeftRight, Play, BarChart2, Target, Clock, Lightbulb, Users, Pin, Check, Copy, RefreshCcw, Film } from 'lucide-react';
+import {
+  Search, PanelLeft, Plus, X, Sparkles, Brain, Mic, AudioLines,
+  MessageSquare, Settings, PenLine, Scale, ShieldAlert, Film,
+  ChevronDown, ChevronRight, Check, Copy, ThumbsUp, ThumbsDown, RotateCcw,
+  ArrowUp, Clock, AlertTriangle, ShieldCheck, Zap, Sliders,
+  CircleUser, HelpCircle, LogOut, Store, Pin, Trash2, UploadCloud, Activity
+} from 'lucide-react';
 
-// Default initial history sessions
 const INITIAL_HISTORY = [
   {
     id: 'hist-1',
-    title: 'Q3 Quarterly Performance Review',
+    title: 'CR-889 — CCTV Perimeter Tamper Audit',
+    mode: 'cyber',
     timestamp: 'Today',
-    videoName: 'Q3_Executive_Briefing.mp4',
-    prompt: 'Summarize the Q3 executive review video and highlight major regional benchmarks and next steps.',
-    summary: {
-      title: 'Q3 Quarterly Performance Review & Financial Benchmarks',
-      overview: 'A comprehensive executive review of Q3 organizational metrics, regional performance highlights, and strategic operational goals. Overall team delivery exceeded quarterly revenue targets by 12%, driven predominantly by rapid enterprise adoption of the newly released product line across the Asia-Pacific region.',
-      takeaways: [
-        { label: 'Exceeded Targets by 12%', detail: 'Overall organization outpaced performance benchmarks across all primary business divisions.' },
-        { label: 'APAC Expansion Success', detail: 'The newly deployed product tier achieved unprecedented enterprise retention and expansion in Asia-Pacific.' },
-        { label: 'Marketing Attribution Gap', detail: 'Identified a need to optimize marketing spend by implementing multi-touch attribution models before Q4 budget allocation.' },
-        { label: 'Three Strategic Initiatives', detail: 'Greenlit three core cross-functional initiatives to automate pipeline workflows and streamline delivery.' }
+    isPinned: true,
+    videoName: 'CCTV_Perimeter_Sector4.mp4',
+    prompt: 'Audit CCTV_Perimeter_Sector4.mp4 for video manipulation, frame splices, and timestamp alteration.',
+    cyberData: {
+      threatScore: 87,
+      threatLevel: 'HIGH',
+      classification: 'Unauthorized Manipulation & Frame Splicing',
+      anomalies: [
+        { time: '00:14 – 00:18', type: 'Optical Flow Discontinuity', severity: 'CRITICAL', desc: 'Synthetic background loop injected to mask perimeter gate activity.' },
+        { time: '00:14', type: 'I-Frame Splicing', severity: 'HIGH', desc: 'Compression quantization jump detected between frame 420 and 421.' },
+        { time: '00:00 – 00:45', type: 'Audio Desynchronization', severity: 'MEDIUM', desc: 'Audio track zeroed out prior to file container creation.' }
       ],
-      chapters: [
-        { time: '00:04 – 00:22', title: 'Executive Welcome & Metric Benchmarks', desc: 'Speaker opens the meeting, presenting the live KPI dashboard highlighting the 12% over-target revenue milestone.' },
-        { time: '00:25 – 00:55', title: 'Product Adoption & APAC Expansion', desc: 'Deep dive into the Asia-Pacific launch results, highlighting enterprise market demand and customer satisfaction.' },
-        { time: '01:00 – 01:14', title: 'Operational Critique: Marketing ROI', desc: 'Critical evaluation of current marketing channels, calling for an immediate audit and improved attribution modeling.' },
-        { time: '01:20 – 03:07', title: 'Strategic Roadmap & Final Directives', desc: 'Outline of three upcoming operational initiatives, resource allocations, and closing Q&A.' }
-      ],
-      dynamics: {
-        tone: 'Confident, Collaborative & Analytical',
-        sentiment: 'Predominantly Positive (62% Positive, 27% Neutral, 11% Constructive Critique)',
-        speakers: '3 Active Speakers (VP Operations, Product Lead, Finance Director)',
-        engagement: 'High (84%), with peak interaction occurring during the marketing attribution discussion.'
-      },
-      actionItems: [
-        'Perform an end-to-end audit of digital marketing acquisition channels and implement multi-touch attribution.',
-        'Accelerate regional deployment logistics in APAC to maintain current momentum.',
-        'Finalize project charters and cross-functional teams for the three Q4 strategic initiatives by Friday.'
+      integrityStatus: 'Tampered / Compromised',
+      hashMatch: 'Mismatch (SHA-256 diverges from camera ledger)',
+      mitigationActions: [
+        'Flag segment 00:14–00:18 for cryptographic preservation.',
+        'Cross-reference badge swipe access logs for Sector 4.',
+        'Notify physical security operations center.'
       ]
     },
     messages: []
   },
   {
     id: 'hist-2',
-    title: 'Product Launch Keynote 2024',
-    timestamp: 'Yesterday',
-    videoName: 'Keynote_Product_Reveal.mp4',
-    prompt: 'Provide an executive summary of the keynote reveal.',
+    title: 'Executive Briefing Q3 — Revenue & Growth',
+    mode: 'general',
+    timestamp: 'Today',
+    isPinned: true,
+    videoName: 'Q3_Executive_Briefing.mp4',
+    prompt: 'Summarize the Q3 executive review video and highlight key financial metrics.',
     summary: {
-      title: 'Univance Product Launch Keynote 2024',
-      overview: 'The keynote presentation unveiled Univance v2.0, focusing on real-time neural multimodal video intelligence, sub-100ms latency inference, and decentralized evidence integrity verification.',
+      title: 'Q3 Executive Performance Briefing',
+      overview: 'Executive briefing on Q3 organizational milestones. Exceeded quarterly revenue benchmarks by 14.8% through accelerated enterprise adoption of Chorus Multimodal Video Intelligence.',
       takeaways: [
-        { label: 'Next-Gen Platform Launch', detail: 'Univance 2.0 announced with automated video scene comprehension and tamper detection.' },
-        { label: 'Enterprise Security Compliance', detail: 'Full SOC-2 and HIPAA compliance verification integrated into the ingest pipeline.' },
-        { label: 'Developer SDK Availability', detail: 'Beta access opened for developer APIs with Python and Node.js client bindings.' }
+        { label: 'Revenue Growth', detail: '14.8% outperformance across all core commercial segments.' },
+        { label: 'Product Expansion', detail: 'Chorus Multimodal Intelligence active across 34 enterprise pilots.' }
       ],
       chapters: [
-        { time: '00:00 – 05:30', title: 'Opening Address & Industry Vision', desc: 'Overview of modern video data overload and the emergence of multimodal AI.' },
-        { time: '05:30 – 14:15', title: 'Live Product Demonstration', desc: 'Real-time scene segmentation, speaker diarization, and forensic threat analysis demonstrated on stage.' },
-        { time: '14:15 – 22:00', title: 'Ecosystem & Availability', desc: 'Pricing tiers, enterprise rollout timeline, and community developer program launch.' }
+        { time: '00:00 – 03:15', title: 'Executive Welcome', desc: 'CEO opening remarks and operational context.' },
+        { time: '03:15 – 09:40', title: 'Financial Metrics', desc: 'CFO review of margins, operating expenses, and ARR.' },
+        { time: '09:40 – 14:20', title: 'Product Roadmap', desc: 'Overview of multimodal video processing pipelines.' }
       ],
       dynamics: {
-        tone: 'Inspirational & High Energy',
-        sentiment: 'Overwhelmingly Positive (89% Positive, 11% Neutral)',
-        speakers: '2 Keynote Speakers (Chief Executive Officer, Head of AI Research)',
-        engagement: 'Extremely High (94%)'
+        analyzedFrames: '25,800 frames @ 30fps',
+        engine: 'Chorus DeepVideo'
       },
       actionItems: [
-        'Onboard initial enterprise tier beta partners.',
-        'Publish public documentation and developer SDK packages.',
-        'Schedule follow-up technical webinars for engineering teams.'
+        'Distribute finalized Q3 financial packet to executive stakeholders.',
+        'Schedule follow-up engineering briefing on real-time stream decoding.'
       ]
     },
     messages: []
   },
   {
     id: 'hist-3',
-    title: 'Townhall: Engineering Roadmap',
-    timestamp: 'Previous 7 Days',
-    videoName: 'Engineering_All_Hands.mp4',
-    prompt: 'Summarize the engineering all hands roadmap.',
-    summary: {
-      title: 'Engineering All-Hands: Technical Roadmap & Architecture',
-      overview: 'Technical leadership review addressing cloud infrastructure optimization, microservices decoupling, and automated CI/CD security gating.',
-      takeaways: [
-        { label: 'Infrastructure Cost Reduction', detail: 'Cloud compute expenditure trimmed by 24% following GPU cluster autoscaling.' },
-        { label: 'Model Latency Optimization', detail: 'Quantization and ONNX runtime integration reduced inference time from 4.2s to 1.1s.' }
+    title: 'Synthetic Voice & Deepfake Screen',
+    mode: 'cyber',
+    timestamp: 'Yesterday',
+    isPinned: false,
+    videoName: 'Executive_Public_Address.mp4',
+    prompt: 'Verify authenticity of public address video. Check for neural face manipulation and synthetic audio cloning.',
+    cyberData: {
+      threatScore: 92,
+      threatLevel: 'CRITICAL',
+      classification: 'Generative Face Synthesis & Voice Cloning',
+      anomalies: [
+        { time: '00:04 – 00:38', type: 'Facial Boundary Blurring', severity: 'CRITICAL', desc: 'Deepfake diffusion boundary artifacts detected around jawline.' },
+        { time: '00:00 – 00:40', type: 'Acoustic Vocoder Artifacts', severity: 'HIGH', desc: 'Synthetic neural vocoder frequencies identified in >16kHz band.' }
       ],
-      chapters: [
-        { time: '00:00 – 08:20', title: 'Architecture Refactor Review', desc: 'Migration from monolithic ingestion to distributed event-driven microservices.' },
-        { time: '08:20 – 18:00', title: 'Security & Quality Gate Standards', desc: 'Introduction of mandatory automated integrity tests for video ingest pipelines.' }
-      ],
-      dynamics: {
-        tone: 'Technical, Methodical & Focused',
-        sentiment: 'Balanced & Constructive (70% Positive, 25% Neutral, 5% Challenges noted)',
-        speakers: '4 Engineering Leads',
-        engagement: 'High (80%)'
-      },
-      actionItems: [
-        'Complete Kubernetes cluster migration by end of month.',
-        'Roll out automated testing suites across all media ingest workers.'
+      integrityStatus: 'Synthetic Media Detected',
+      hashMatch: 'Unregistered Source',
+      mitigationActions: [
+        'Tag media asset as synthetic deepfake in Evidence Registry.',
+        'Issue verified communication advisory.'
       ]
     },
     messages: []
@@ -106,141 +101,269 @@ const INITIAL_HISTORY = [
 ];
 
 export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
+  const navigate = useNavigate();
   const { user, logout } = useContext(AuthContext);
 
-  // Sessions / History
+  // Active Mode: 'general' or 'cyber'
+  const [activeMode, setActiveMode] = useState('general');
+
   const [history, setHistory] = useState(() => {
     try {
-      const saved = localStorage.getItem('univance_general_history');
+      const saved = localStorage.getItem('chorus_history');
       return saved ? JSON.parse(saved) : INITIAL_HISTORY;
     } catch {
       return INITIAL_HISTORY;
     }
   });
 
-  const [activeSessionId, setActiveSessionId] = useState(() => history[0]?.id || null);
+  const [activeSessionId, setActiveSessionId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-
-  // Active chat state
-  const [activeSession, setActiveSession] = useState(() => history[0] || null);
+  const [activeSession, setActiveSession] = useState(null);
   const [promptText, setPromptText] = useState('');
   const [attachedFile, setAttachedFile] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatingStep, setGeneratingStep] = useState('');
-  const [copied, setCopied] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
+  const [copiedId, setCopiedId] = useState(null);
+  const [isVoiceActive, setIsVoiceActive] = useState(false);
+  const [searchFilter, setSearchFilter] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [suggestionCardDismissed, setSuggestionCardDismissed] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
+
+  const [selectedModel, setSelectedModel] = useState(() => {
+    return localStorage.getItem('chorus_selected_model') || 'flash';
+  });
+  const [modelDropdownOpen, setModelDropdownOpen] = useState(false);
+  const [commandNotification, setCommandNotification] = useState(null);
+  const [showCommandSuggestions, setShowCommandSuggestions] = useState(false);
+  const [expandedThoughts, setExpandedThoughts] = useState({});
 
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const textareaRef = useRef(null);
+  const userMenuRef = useRef(null);
+  const modelDropdownRef = useRef(null);
 
-  // Save history on changes
+  const switchModel = (newModel, viaCommand = false) => {
+    setSelectedModel(newModel);
+    try {
+      localStorage.setItem('chorus_selected_model', newModel);
+    } catch { }
+    setModelDropdownOpen(false);
+    setShowCommandSuggestions(false);
+    const name = newModel === 'deepthink' ? 'Chorus Deepthink' : 'Chorus Flash';
+    setCommandNotification({
+      text: name
+    });
+    setTimeout(() => {
+      setCommandNotification(null);
+    }, 1500);
+  };
+
+  const toggleThought = (msgId) => {
+    setExpandedThoughts(prev => ({
+      ...prev,
+      [msgId]: !prev[msgId]
+    }));
+  };
+
+  // Close model dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (modelDropdownRef.current && !modelDropdownRef.current.contains(e.target)) {
+        setModelDropdownOpen(false);
+      }
+    }
+    if (modelDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [modelDropdownOpen]);
+
+  // Shortcut: Ctrl + M toggles model
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'm') {
+        e.preventDefault();
+        const next = selectedModel === 'flash' ? 'deepthink' : 'flash';
+        switchModel(next, true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedModel]);
+
+  // Close user profile popover on outside click
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setUserMenuOpen(false);
+      }
+    }
+    if (userMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [userMenuOpen]);
+
+  // Sync history to local storage
   useEffect(() => {
     try {
-      localStorage.setItem('univance_general_history', JSON.stringify(history));
-    } catch (e) {
-      console.warn('Could not save history to localStorage', e);
-    }
+      localStorage.setItem('chorus_history', JSON.stringify(history));
+    } catch (e) { }
   }, [history]);
 
-  // Sync active session when selection changes
+  // Handle session selection
   useEffect(() => {
     if (activeSessionId) {
       const found = history.find(h => h.id === activeSessionId);
       if (found) {
         setActiveSession(found);
+        if (found.mode) setActiveMode(found.mode);
       }
     } else {
       setActiveSession(null);
     }
   }, [activeSessionId, history]);
 
-  // Scroll to bottom on new messages
+  // Auto scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [activeSession?.messages, isGenerating]);
 
-  // Handle creating a brand new chat
+  // Auto resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 180)}px`;
+    }
+  }, [promptText]);
+
+  // Guaranteed direct navigation to Evidence Room
+  const handleOpenEvidenceRoom = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (onGoToEvidence) onGoToEvidence();
+    navigate('/evidence');
+    setTimeout(() => {
+      if (window.location.pathname !== '/evidence') {
+        window.location.href = '/evidence';
+      }
+    }, 50);
+  };
+
   const handleNewChat = () => {
     setActiveSessionId(null);
     setActiveSession(null);
     setPromptText('');
     setAttachedFile(null);
     setIsGenerating(false);
-  };
-
-  // Handle deleting a session
-  const handleDeleteSession = (e, id) => {
-    e.stopPropagation();
-    const updated = history.filter(h => h.id !== id);
-    setHistory(updated);
-    if (activeSessionId === id) {
-      if (updated.length > 0) {
-        setActiveSessionId(updated[0].id);
-      } else {
-        handleNewChat();
-      }
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
     }
   };
 
-  // Generate a realistic, rich summary based on input
-  const createSummaryResponse = (title, file) => {
-    const cleanTitle = (file ? file.name : title)
-      .replace(/\.[^/.]+$/, '')
-      .replace(/[-_]/g, ' ')
-      .trim();
-
-    return {
-      title: cleanTitle.length > 3 ? cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1) : 'Video Content Analysis & Summary',
-      overview: `A complete executive AI briefing synthesized from the ingested media. The video details operational milestones, performance assessments, and core strategic deliverables. The discussion highlights strong momentum in adoption, coupled with key recommendations for optimizing workflow execution and cross-team alignment.`,
-      takeaways: [
-        { label: 'Milestone Execution', detail: 'Key quarterly objectives delivered ahead of initial timeline projections with measurable positive impact.' },
-        { label: 'Market Traction', detail: 'Strong customer validation observed across primary target segments and regional rollout zones.' },
-        { label: 'Resource Realignment', detail: 'Recommended reallocation of focus toward automated attribution modeling and streamlined delivery pipelines.' },
-        { label: 'Clear Strategic Directives', detail: 'Leadership agreed on prioritized workstreams for the upcoming operational cycle.' }
-      ],
-      chapters: [
-        { time: '00:00 – 00:45', title: 'Introduction & Strategic Context', desc: 'Opening framing of core objectives, agenda alignment, and review of historical benchmark data.' },
-        { time: '00:45 – 01:50', title: 'Performance Metrics & Evidence Review', desc: 'Detailed walkthrough of performance data, customer engagement metrics, and growth indicators.' },
-        { time: '01:50 – 02:40', title: 'Discussion & Operational Recommendations', desc: 'Constructive critique addressing resource bottlenecks, attribution analysis, and optimization proposals.' },
-        { time: '02:40 – End', title: 'Summary & Actionable Next Steps', desc: 'Consensus on immediate next steps, owner assignments, and timeline commitments.' }
-      ],
-      dynamics: {
-        tone: 'Productive, Confident & Forward-Looking',
-        sentiment: 'Predominantly Positive (68% Positive, 24% Neutral, 8% Critical)',
-        speakers: 'Multi-speaker collaborative format',
-        engagement: 'High (86%) sustained throughout the presentation.'
-      },
-      actionItems: [
-        'Review and implement suggested pipeline attribution adjustments before the next review cycle.',
-        'Distribute action item assignments and milestones to department leads.',
-        'Schedule follow-up progress sync to verify deliverable completion.'
-      ]
-    };
+  const handleTogglePin = (id, e) => {
+    e.stopPropagation();
+    setHistory(prev => prev.map(item => {
+      if (item.id === id) {
+        return { ...item, isPinned: !item.isPinned };
+      }
+      return item;
+    }));
   };
 
-  // Submit a video for analysis or follow-up question
-  const handleSend = async () => {
-    const trimmed = promptText.trim();
+  const handleDeleteHistory = (id, e) => {
+    e.stopPropagation();
+    setHistory(prev => prev.filter(item => item.id !== id));
+    if (activeSessionId === id) {
+      setActiveSessionId(null);
+      setActiveSession(null);
+    }
+  };
+
+  const handleSwitchMode = (newMode) => {
+    setActiveMode(newMode);
+    if (!activeSession) {
+      // Stay on empty state in the new mode
+    }
+  };
+
+  const handleSend = async (customPrompt) => {
+    const textToSend = typeof customPrompt === 'string' ? customPrompt : promptText;
+    const trimmed = textToSend.trim();
     if (!trimmed && !attachedFile) return;
 
-    // Case 1: Starting a new analysis or currently on empty chat
-    if (!activeSession || !activeSession.summary) {
+    // Check if input is a model switch command
+    const rawLower = trimmed.toLowerCase();
+    if (rawLower === '/flash' || rawLower === '/fast') {
+      switchModel('flash', true);
+      setPromptText('');
+      return;
+    }
+    if (rawLower === '/deepthink' || rawLower === '/think') {
+      switchModel('deepthink', true);
+      setPromptText('');
+      return;
+    }
+    if (rawLower === '/model' || rawLower === '/switch') {
+      const next = selectedModel === 'flash' ? 'deepthink' : 'flash';
+      switchModel(next, true);
+      setPromptText('');
+      return;
+    }
+
+    let effectiveModel = selectedModel;
+    let actualPrompt = trimmed;
+
+    if (rawLower.startsWith('/flash ')) {
+      effectiveModel = 'flash';
+      switchModel('flash', true);
+      actualPrompt = trimmed.substring(7).trim();
+    } else if (rawLower.startsWith('/deepthink ')) {
+      effectiveModel = 'deepthink';
+      switchModel('deepthink', true);
+      actualPrompt = trimmed.substring(11).trim();
+    } else if (rawLower.startsWith('/think ')) {
+      effectiveModel = 'deepthink';
+      switchModel('deepthink', true);
+      actualPrompt = trimmed.substring(7).trim();
+    }
+
+    const isCyberQuery = activeMode === 'cyber' || /tamper|cyber|threat|hack|fake|manipulat|forge|deepfake|splice|anomaly/i.test(actualPrompt);
+    const sessionMode = isCyberQuery ? 'cyber' : 'general';
+
+    if (!activeSession) {
       const newId = 'hist-' + Date.now();
-      const videoName = attachedFile ? attachedFile.name : (trimmed.length > 25 ? trimmed.substring(0, 25) + '...' : trimmed);
-      const title = attachedFile ? attachedFile.name.replace(/\.[^/.]+$/, '') : (trimmed.length > 32 ? trimmed.substring(0, 32) + '...' : trimmed);
+      const videoName = attachedFile ? attachedFile.name : null;
+      const title = attachedFile
+        ? attachedFile.name.replace(/\.[^/.]+$/, '')
+        : (actualPrompt.length > 36 ? actualPrompt.substring(0, 36) + '...' : actualPrompt);
 
       const userMsg = {
+        id: 'msg-' + Date.now(),
         sender: 'user',
-        text: trimmed || 'Please analyze this video and provide a comprehensive executive summary with key takeaways and action items.',
+        text: actualPrompt || (videoName ? `Analyze video evidence: ${videoName}` : 'Run video intelligence analysis.'),
         attachment: attachedFile ? attachedFile.name : null
       };
 
       const newSessionStub = {
         id: newId,
-        title: title || 'New Video Analysis',
+        title: title || (isCyberQuery ? 'Cyber Threat Scan' : 'Video Intelligence Analysis'),
+        mode: sessionMode,
         timestamp: 'Just now',
+        isPinned: false,
         videoName,
         prompt: userMsg.text,
         summary: null,
+        cyberData: null,
+        modelUsed: effectiveModel,
         messages: [userMsg]
       };
 
@@ -250,76 +373,147 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
       setPromptText('');
       setAttachedFile(null);
       setIsGenerating(true);
+      if (effectiveModel === 'deepthink') {
+        setIsThinking(true);
+      }
 
-      // Simulation of AI processing steps
-      setGeneratingStep('Scanning video scenes & extracting audio transcripts...');
-      await new Promise(r => setTimeout(r, 1100));
+      // Simulate analysis time: Flash is fast (800ms), Deepthink does multi-step thinking (2400ms)
+      const delay = effectiveModel === 'deepthink' ? 2400 : 800;
+      await new Promise(r => setTimeout(r, delay));
+      setIsThinking(false);
 
-      setGeneratingStep('Analyzing speech sentiment & identifying key speakers...');
-      await new Promise(r => setTimeout(r, 1100));
+      if (sessionMode === 'cyber') {
+        const generatedCyberData = {
+          threatScore: 84,
+          threatLevel: 'HIGH',
+          classification: 'Temporal Frame Anomaly & Tamper Risk',
+          modelUsed: effectiveModel,
+          anomalies: [
+            { time: '00:08 – 00:15', type: 'Discontinuous Optical Vector', severity: 'CRITICAL', desc: 'Frame sequence displays artificial frame injection and temporal displacement.' },
+            { time: '00:12', type: 'Compression Rate Jump', severity: 'HIGH', desc: 'Macroblock rate variance exceeds standard encoder thresholds by 32%.' },
+            { time: '00:00 – End', type: 'Metadata Audit', severity: 'MEDIUM', desc: 'Container timestamp header does not match camera hardware firmware signature.' }
+          ],
+          integrityStatus: 'Tamper Detected (High Confidence)',
+          hashMatch: 'Mismatch with Ledger Registry',
+          mitigationActions: [
+            'Isolate and preserve target timestamp segment (00:08–00:15).',
+            'Cross-check camera custody chain in Evidence Room.',
+            'Export tamper digest for incident response.'
+          ]
+        };
 
-      setGeneratingStep('Synthesizing executive summary & action items...');
-      await new Promise(r => setTimeout(r, 1200));
+        const assistantMsg = {
+          id: 'msg-' + (Date.now() + 1),
+          sender: 'assistant',
+          isCyberReport: true,
+          cyberData: generatedCyberData,
+          modelUsed: effectiveModel,
+          thoughtTime: effectiveModel === 'deepthink' ? '3.4s' : null,
+          thoughtProcess: effectiveModel === 'deepthink' ? [
+            "Deconstructed frame buffer from 00:00 to 00:45 across camera sector 4.",
+            "Computed optical flow vector derivatives; identified discontinuity spike at 00:14.",
+            "Verified container timestamp against camera SHA-256 ledger: checksum diverged by 4 blocks.",
+            "Formulated tamper probability score: 84/100 (HIGH)."
+          ] : null
+        };
 
-      const generatedSummary = createSummaryResponse(title, attachedFile);
+        const completedSession = {
+          ...newSessionStub,
+          cyberData: generatedCyberData,
+          modelUsed: effectiveModel,
+          messages: [userMsg, assistantMsg]
+        };
+
+        setActiveSession(completedSession);
+        setHistory(prev => prev.map(item => item.id === newId ? completedSession : item));
+        setIsGenerating(false);
+        return;
+      }
+
+      // General Mode Output
+      const generatedSummary = {
+        title: title ? `${title} — Summary` : 'Chorus Video Intelligence Summary',
+        modelUsed: effectiveModel,
+        overview: 'Automated multimodal breakdown completed. Identified primary scene themes, visual action sequences, and high-priority operational takeaways.',
+        takeaways: [
+          { label: 'Primary Activity', detail: 'High visual coherence across primary scene intervals.' },
+          { label: 'Audio Clarity', detail: 'Speech audio transcribed with verified voiceprint synchronization.' },
+          { label: 'Key Finding', detail: 'Target event milestones cataloged and indexed.' }
+        ],
+        chapters: [
+          { time: '00:00 – 01:10', title: 'Introductory Segment', desc: 'Initial subject entry and environment framing.' },
+          { time: '01:10 – 03:20', title: 'Core Activity Window', desc: 'Primary subject actions and recorded interactions.' },
+          { time: '03:20 – End', title: 'Conclusion', desc: 'Scene wrap-up and departures.' }
+        ],
+        dynamics: {
+          analyzedFrames: '1,620 frames @ 30fps',
+          engine: effectiveModel === 'deepthink' ? 'Chorus Deepthink (Forensic Engine)' : 'Chorus Flash'
+        },
+        actionItems: [
+          'Log intelligence summary into case archive.',
+          'Review flagged scene timestamps.'
+        ]
+      };
+
+      const assistantMsg = {
+        id: 'msg-' + (Date.now() + 1),
+        sender: 'assistant',
+        isSummary: true,
+        summaryData: generatedSummary,
+        modelUsed: effectiveModel,
+        thoughtTime: effectiveModel === 'deepthink' ? '2.8s' : null,
+        thoughtProcess: effectiveModel === 'deepthink' ? [
+          "Indexed speech transcripts and visual keyframes across 3 distinct chapters.",
+          "Evaluated multimodal consistency between audio track and visual actions.",
+          "Generated structured executive summary takeaways."
+        ] : null
+      };
 
       const completedSession = {
         ...newSessionStub,
         summary: generatedSummary,
-        messages: [
-          userMsg,
-          {
-            sender: 'assistant',
-            isSummary: true,
-            summaryData: generatedSummary
-          }
-        ]
+        modelUsed: effectiveModel,
+        messages: [userMsg, assistantMsg]
       };
 
       setActiveSession(completedSession);
       setHistory(prev => prev.map(item => item.id === newId ? completedSession : item));
       setIsGenerating(false);
-      setGeneratingStep('');
       return;
     }
 
-    // Case 2: Follow-up question in existing session
+    // Follow-up message
     const userFollowUp = {
+      id: 'msg-' + Date.now(),
       sender: 'user',
-      text: trimmed,
+      text: actualPrompt,
       attachment: attachedFile ? attachedFile.name : null
     };
 
     const updatedMessages = [...(activeSession.messages || []), userFollowUp];
-
     setActiveSession(prev => ({ ...prev, messages: updatedMessages }));
     setPromptText('');
     setAttachedFile(null);
     setIsGenerating(true);
-    setGeneratingStep('Analyzing query against video transcript...');
-
-    await new Promise(r => setTimeout(r, 1200));
-
-    // Formulate intelligent conversational reply
-    let replyText = '';
-    const q = trimmed.toLowerCase();
-
-    if (q.includes('market') || q.includes('spend') || q.includes('attribution')) {
-      replyText = `Regarding the marketing evaluation: The review highlighted that while customer acquisition has been strong, the team needs to optimize digital marketing spend. Specifically, they decided to implement multi-touch attribution models before committing to next quarter's budget to avoid unnecessary ad spend.`;
-    } else if (q.includes('action') || q.includes('next step') || q.includes('todo')) {
-      replyText = `Here are the top action items established in the meeting:\n1. Audit digital marketing channels and deploy multi-touch attribution.\n2. Accelerate APAC distribution logistics to sustain growth momentum.\n3. Finalize project charters and cross-functional team assignments by this Friday.`;
-    } else if (q.includes('speaker') || q.includes('who')) {
-      replyText = `The discussion involved 3 primary participants: the Vice President of Operations (meeting host), the Product Lead (who presented regional performance), and the Finance Director (who evaluated marketing spend and budget allocation).`;
-    } else if (q.includes('apac') || q.includes('asia') || q.includes('region')) {
-      replyText = `The Asia-Pacific region was the top growth driver highlighted in the review, significantly exceeding adoption projections and driving the overall 12% revenue outperformance for the new product tier.`;
-    } else {
-      replyText = `Based on the video analysis for "${activeSession.title}": The primary consensus was that operational delivery is strong (12% above benchmark), with immediate priorities focused on streamlining marketing attribution and scaling regional logistics. Let me know if you would like specific timestamps or quotes from the transcript!`;
+    if (effectiveModel === 'deepthink') {
+      setIsThinking(true);
     }
 
+    const delay = effectiveModel === 'deepthink' ? 2200 : 700;
+    await new Promise(r => setTimeout(r, delay));
+    setIsThinking(false);
+
     const aiReply = {
+      id: 'msg-' + (Date.now() + 1),
       sender: 'assistant',
-      isSummary: false,
-      text: replyText
+      modelUsed: effectiveModel,
+      thoughtTime: effectiveModel === 'deepthink' ? '2.1s' : null,
+      thoughtProcess: effectiveModel === 'deepthink' ? [
+        `Analyzed prompt intent: "${actualPrompt}".`,
+        "Cross-referenced prior temporal context and timeline metadata.",
+        "Verified consistency against current case timeline ledger."
+      ] : null,
+      text: `Chorus ${effectiveModel === 'deepthink' ? 'Deepthink' : 'Flash'} ${activeMode === 'cyber' ? 'Cyber Intelligence' : 'Analysis'}:\n\nIn response to "${actualPrompt}":\nThe video feed confirms the requested parameters. Temporal coherence is verified across adjacent keyframes without metric divergence.`
     };
 
     const finalSession = {
@@ -330,350 +524,881 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
     setActiveSession(finalSession);
     setHistory(prev => prev.map(item => item.id === activeSession.id ? finalSession : item));
     setIsGenerating(false);
-    setGeneratingStep('');
   };
 
-  const handleCopySummary = (summary) => {
-    if (!summary) return;
-    const text = `
-${summary.title}
-==============================
-EXECUTIVE OVERVIEW:
-${summary.overview}
-
-KEY TAKEAWAYS:
-${summary.takeaways.map(t => `• ${t.label}: ${t.detail}`).join('\n')}
-
-TIMELINE BREAKDOWN:
-${summary.chapters.map(c => `[${c.time}] ${c.title} — ${c.desc}`).join('\n')}
-
-ACTION ITEMS:
-${summary.actionItems.map((a, i) => `${i + 1}. ${a}`).join('\n')}
-    `.trim();
-
+  const handleCopy = (text, id) => {
     navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 2000);
   };
 
-  return (
-    <div className="cpt-container">
-      
-      {/* ── Left Sidebar: History & Navigation ── */}
-      <aside className={`cpt-sidebar ${sidebarOpen ? '' : 'collapsed'}`}>
-        <div className="cpt-sidebar__header">
-          <div className="cpt-brand">
-            <div className="cpt-logo">
-              <svg viewBox="0 0 24 24" fill="none" className="cpt-logo-icon">
-                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
-              <span className="cpt-logo-title">UNIVANCE AI</span>
-            </div>
-            <span className="cpt-mode-badge">General</span>
+  // Filter history
+  const filteredHistory = history.filter(h =>
+    h.title.toLowerCase().includes(searchFilter.toLowerCase())
+  );
+  const pinnedHistory = filteredHistory.filter(h => h.isPinned);
+  const recentHistory = filteredHistory.filter(h => !h.isPinned);
+
+  const userName = user?.name || (user?.email ? (user.email.toLowerCase().includes('khush') ? 'Khush Desai' : user.email.split('@')[0]) : 'Khush Desai');
+  const userFirstName = (userName.split(' ')[0] || 'Khush').replace(/^\w/, c => c.toUpperCase());
+  const capitalizedUserName = userName.includes(' ')
+    ? userName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+    : userName.charAt(0).toUpperCase() + userName.slice(1);
+
+  // Chat Input Component
+  const ChatInput = ({ centered }) => (
+    <div className={`cpt-input-container ${centered ? 'cpt-input-centered' : ''}`}>
+      {/* Command Palette Popup */}
+      {promptText.startsWith('/') && (
+        <div className="cpt-command-popup">
+          <div 
+            className="cpt-command-popup-item"
+            onClick={() => {
+              switchModel('flash', true);
+              setPromptText('');
+            }}
+          >
+            <span className="cpt-command-popup-cmd">/flash</span>
+            <span className="cpt-command-popup-desc">Chorus Flash</span>
           </div>
 
+          <div 
+            className="cpt-command-popup-item"
+            onClick={() => {
+              switchModel('deepthink', true);
+              setPromptText('');
+            }}
+          >
+            <span className="cpt-command-popup-cmd">/deepthink</span>
+            <span className="cpt-command-popup-desc">Chorus Deepthink</span>
+          </div>
+        </div>
+      )}
+
+      <div className={`cpt-input-wrapper ${activeMode === 'cyber' ? 'cyber-border' : ''}`}>
+        {attachedFile && (
+          <div className="cpt-file-chip">
+            <Film size={13} className="cpt-file-icon" />
+            <span className="cpt-file-name">{attachedFile.name}</span>
+            <button className="cpt-file-chip__remove" onClick={() => setAttachedFile(null)}>
+              <X size={12} />
+            </button>
+          </div>
+        )}
+
+        <div className="cpt-input-box">
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="sr-only"
+            accept=".mp4,.mov,.avi,.webm,.mkv,.ts,.wav,.mp3"
+            onChange={(e) => {
+              const f = e.target.files[0];
+              if (f) setAttachedFile(f);
+            }}
+          />
+          <button
+            className="cpt-icon-btn cpt-attach-btn"
+            onClick={() => fileInputRef.current?.click()}
+            title="Attach video file"
+          >
+            <Plus size={18} />
+          </button>
+
+          <textarea
+            ref={textareaRef}
+            className="cpt-textarea"
+            placeholder={activeMode === 'cyber'
+              ? "Audit video for deepfakes, frame splices, or tamper analysis..."
+              : "Ask video questions, summarize chapters, or paste video URL..."
+            }
+            value={promptText}
+            onChange={(e) => setPromptText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+            rows={1}
+          />
+
+          <div className="cpt-input-actions-right">
+            {/* Gemini-style Model Selector Pill inside Input */}
+            <div className="cpt-gemini-pill-wrapper" ref={modelDropdownRef}>
+              <button
+                type="button"
+                className="cpt-gemini-pill-btn"
+                onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
+                title="Select model"
+              >
+                <span>{selectedModel === 'deepthink' ? 'Deepthink' : 'Flash'}</span>
+                <ChevronDown size={14} className={`cpt-gemini-pill-caret ${modelDropdownOpen ? 'open' : ''}`} />
+              </button>
+
+              {modelDropdownOpen && (
+                <div className={`cpt-gemini-dropdown ${centered ? 'dropdown-down' : 'dropdown-up'}`}>
+                  <div 
+                    className={`cpt-gemini-option ${selectedModel === 'flash' ? 'active' : ''}`}
+                    onClick={() => switchModel('flash')}
+                  >
+                    <div className="cpt-gemini-check-col">
+                      {selectedModel === 'flash' && <Check size={14} />}
+                    </div>
+                    <div className="cpt-gemini-option-text">
+                      <div className="cpt-gemini-option-title">Chorus Flash</div>
+                      <div className="cpt-gemini-option-sub">Fastest answers</div>
+                    </div>
+                  </div>
+
+                  <div 
+                    className={`cpt-gemini-option ${selectedModel === 'deepthink' ? 'active' : ''}`}
+                    onClick={() => switchModel('deepthink')}
+                  >
+                    <div className="cpt-gemini-check-col">
+                      {selectedModel === 'deepthink' && <Check size={14} />}
+                    </div>
+                    <div className="cpt-gemini-option-text">
+                      <div className="cpt-gemini-option-title">Chorus Deepthink</div>
+                      <div className="cpt-gemini-option-sub">Advanced reasoning</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {promptText.trim().length > 0 || attachedFile ? (
+              <button
+                className={`cpt-send-btn ${activeMode === 'cyber' ? 'cyber-send' : ''}`}
+                onClick={() => handleSend()}
+                title="Send"
+              >
+                <ArrowUp size={18} />
+              </button>
+            ) : (
+              <button
+                className={`cpt-icon-btn cpt-voice-btn ${activeMode === 'cyber' ? 'cyber-voice' : ''} ${isVoiceActive ? 'pulsing' : ''}`}
+                onClick={() => setIsVoiceActive(!isVoiceActive)}
+                title="Voice Mode"
+              >
+                <Mic size={18} />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="cpt-disclaimer">
+        Chorus AI can make mistakes. Verify critical evidence.
+      </div>
+    </div>
+  );
+
+  return (
+    <div className={`cpt-app ${activeMode === 'cyber' ? 'mode-cyber' : 'mode-general'}`}>
+
+      {/* ──────────────── SIDEBAR ──────────────── */}
+      <aside className={`cpt-sidebar ${sidebarOpen ? '' : 'collapsed'}`}>
+
+        {/* Brand & Toggle */}
+        <div className="cpt-sidebar-header">
+          <div className="cpt-sidebar-brand" onClick={handleNewChat}>
+            <span className="cpt-brand-name">Chorus</span>
+            {activeMode === 'cyber' ? (
+              <span className="cpt-brand-badge cyber">CYBER</span>
+            ) : (
+              <span className="cpt-brand-badge">ANALYTICS</span>
+            )}
+          </div>
+          <div className="cpt-sidebar-header-actions">
+            <button
+              className="cpt-icon-btn"
+              onClick={() => setSearchOpen(!searchOpen)}
+              title="Search investigations"
+            >
+              <Search size={16} />
+            </button>
+            <button
+              className="cpt-icon-btn"
+              onClick={() => setSidebarOpen(false)}
+              title="Close sidebar"
+            >
+              <PanelLeft size={16} />
+            </button>
+          </div>
+        </div>
+
+        {/* Search Bar */}
+        {searchOpen && (
+          <div className="cpt-sidebar-search">
+            <input
+              type="text"
+              placeholder="Search investigations..."
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              autoFocus
+            />
+            {searchFilter && (
+              <button onClick={() => setSearchFilter('')}><X size={13} /></button>
+            )}
+          </div>
+        )}
+
+        {/* New Chat / Investigation Button */}
+        <div className="cpt-sidebar-newchat">
           <button className="cpt-new-btn" onClick={handleNewChat}>
-            <span>+ New Analysis</span>
-            <span className="cpt-new-btn__icon"><Sparkles size={16} /></span>
+            <div className="cpt-new-btn-left">
+              <span className="cpt-new-icon"><PenLine size={15} /></span>
+              <span>New investigation</span>
+            </div>
+            <span className="cpt-new-badge">Ctrl K</span>
           </button>
         </div>
 
-        {/* History list */}
-        <div className="cpt-sidebar__history">
-          <div className="cpt-history-group-label">Recent Summaries</div>
-          {history.map((item) => (
-            <div
-              key={item.id}
-              className={`cpt-history-item ${activeSessionId === item.id ? 'active' : ''}`}
-              onClick={() => setActiveSessionId(item.id)}
-            >
-              <div className="cpt-history-item__left">
-                <span className="cpt-history-item__icon"><MessageSquare size={14} /></span>
-                <span className="cpt-history-item__title">{item.title}</span>
-              </div>
-              <button
-                className="cpt-history-item__del"
-                onClick={(e) => handleDeleteSession(e, item.id)}
-                title="Delete summary"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          ))}
-        </div>
-
-        {/* Sidebar Footer */}
-        <div className="cpt-sidebar__footer">
-          <div className="cpt-user-badge">
-            <div className="cpt-user-avatar">
-              {(user?.email || 'U').charAt(0).toUpperCase()}
-            </div>
-            <span className="cpt-user-email">{user?.email || 'user@univance.ai'}</span>
+        {/* Core Intelligence Modules */}
+        <div className="cpt-sidebar-nav">
+          <div
+            className={`cpt-nav-item ${activeMode === 'general' ? 'active-general-nav' : ''}`}
+            onClick={() => {
+              handleSwitchMode('general');
+              handleNewChat();
+            }}
+            title="Video Analytics & Summarizer Workspace"
+          >
+            <Film size={15} className={`cpt-nav-icon ${activeMode === 'general' ? 'general-color' : ''}`} />
+            <span>Video Analytics</span>
+            <span className={`cpt-nav-badge ${activeMode === 'general' ? 'analytics-active' : ''}`}>
+              {activeMode === 'general' ? 'Active' : 'Switch'}
+            </span>
           </div>
 
-          <div className="cpt-footer-actions">
-            {onGoToEvidence && (
-              <button className="cpt-footer-btn" onClick={onGoToEvidence} title="Open Evidence Room">
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Folder size={14} /> Evidence</span>
+          <div
+            className={`cpt-nav-item ${activeMode === 'cyber' ? 'active-cyber-nav' : ''}`}
+            onClick={() => {
+              handleSwitchMode('cyber');
+              handleNewChat();
+            }}
+            title="Toggle Deepfake & Manipulation Forensic Mode"
+          >
+            <ShieldAlert size={15} className={`cpt-nav-icon ${activeMode === 'cyber' ? 'cyber-color' : ''}`} />
+            <span>Cyber Forensics</span>
+            <span className={`cpt-nav-badge ${activeMode === 'cyber' ? 'threat' : ''}`}>
+              {activeMode === 'cyber' ? 'Active' : 'Switch'}
+            </span>
+          </div>
+
+          <div
+            className="cpt-nav-item"
+            onClick={handleOpenEvidenceRoom}
+            title="Open Evidence Room Registry & Timeline Scrubber"
+          >
+            <Scale size={15} className="cpt-nav-icon" />
+            <span>Evidence Room</span>
+            <span className="cpt-nav-badge">3 Cases</span>
+          </div>
+
+          <div
+            className="cpt-nav-item"
+            onClick={() => fileInputRef.current?.click()}
+            title="Attach and ingest video evidence"
+          >
+            <UploadCloud size={15} className="cpt-nav-icon" />
+            <span>Ingest Media</span>
+            <span className="cpt-nav-badge-subtle">Upload</span>
+          </div>
+        </div>
+
+        {/* History Sections */}
+        <div className="cpt-sidebar-history-scroll">
+          {pinnedHistory.length > 0 && (
+            <div className="cpt-history-section">
+              <div className="cpt-history-label">Pinned Investigations</div>
+              {pinnedHistory.map(item => (
+                <div
+                  key={item.id}
+                  className={`cpt-history-item ${activeSessionId === item.id ? 'active' : ''}`}
+                  onClick={() => setActiveSessionId(item.id)}
+                  title={item.title}
+                >
+                  {item.mode === 'cyber' ? (
+                    <ShieldAlert size={14} className="cpt-hist-icon cyber" />
+                  ) : item.videoName ? (
+                    <Film size={14} className="cpt-hist-icon" />
+                  ) : (
+                    <MessageSquare size={14} className="cpt-hist-icon" />
+                  )}
+                  <span className="cpt-hist-title">{item.title}</span>
+
+                  <div className="cpt-hist-actions">
+                    <button
+                      className="cpt-hist-action-btn"
+                      onClick={(e) => handleTogglePin(item.id, e)}
+                      title="Unpin"
+                    >
+                      <Pin size={12} className="pinned" />
+                    </button>
+                    <button
+                      className="cpt-hist-action-btn delete"
+                      onClick={(e) => handleDeleteHistory(item.id, e)}
+                      title="Delete"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {recentHistory.length > 0 && (
+            <div className="cpt-history-section">
+              <div className="cpt-history-label">Recent Investigations</div>
+              {recentHistory.map(item => (
+                <div
+                  key={item.id}
+                  className={`cpt-history-item ${activeSessionId === item.id ? 'active' : ''}`}
+                  onClick={() => setActiveSessionId(item.id)}
+                  title={item.title}
+                >
+                  {item.mode === 'cyber' ? (
+                    <ShieldAlert size={14} className="cpt-hist-icon cyber" />
+                  ) : item.videoName ? (
+                    <Film size={14} className="cpt-hist-icon" />
+                  ) : (
+                    <MessageSquare size={14} className="cpt-hist-icon" />
+                  )}
+                  <span className="cpt-hist-title">{item.title}</span>
+
+                  <div className="cpt-hist-actions">
+                    <button
+                      className="cpt-hist-action-btn"
+                      onClick={(e) => handleTogglePin(item.id, e)}
+                      title="Pin to top"
+                    >
+                      <Pin size={12} />
+                    </button>
+                    <button
+                      className="cpt-hist-action-btn delete"
+                      onClick={(e) => handleDeleteHistory(item.id, e)}
+                      title="Delete"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Pipeline Quality Gate Status Indicator */}
+        <div className="cpt-sidebar-status">
+          <div className="cpt-status-left">
+            <span className="cpt-status-dot" />
+            <span>Quality Gate 8/8</span>
+          </div>
+          <span className="cpt-status-tsa">RFC-3161 TSA</span>
+        </div>
+
+        {/* User Profile & Popover Menu */}
+        <div className="cpt-sidebar-footer" ref={userMenuRef}>
+          {userMenuOpen && (
+            <div className="cpt-user-popover">
+              <div 
+                className="cpt-popover-header-item"
+                onClick={() => {
+                  setUserMenuOpen(false);
+                  setShowProfileModal(true);
+                }}
+              >
+                <div className="cpt-popover-avatar">
+                  <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=222222&color=ffffff&bold=true`} alt="User" />
+                </div>
+                <div className="cpt-popover-user-info">
+                  <span className="cpt-popover-name">{capitalizedUserName}</span>
+                </div>
+                <ChevronRight size={16} className="cpt-popover-arrow" />
+              </div>
+
+              <div className="cpt-popover-divider" />
+
+              <button 
+                className="cpt-popover-item"
+                onClick={() => {
+                  setUserMenuOpen(false);
+                  setShowProfileModal(true);
+                }}
+              >
+                <CircleUser size={16} className="cpt-popover-icon" />
+                <span>Profile</span>
               </button>
-            )}
-            {onBack && (
-              <button className="cpt-footer-btn" onClick={onBack} title="Switch Mode">
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><ArrowLeftRight size={14} /> Mode</span>
+
+              <button 
+                className="cpt-popover-item"
+                onClick={() => {
+                  setUserMenuOpen(false);
+                  setShowSettingsModal(true);
+                }}
+              >
+                <Settings size={16} className="cpt-popover-icon" />
+                <span>Settings</span>
               </button>
-            )}
-            <button
-              className="cpt-footer-btn cpt-footer-btn--danger"
-              onClick={() => { logout(); window.location.href = '/login'; }}
-              title="Sign Out"
-            >
-              <span>Log out</span>
-            </button>
+
+              <div className="cpt-popover-divider" />
+
+              <button 
+                className="cpt-popover-item"
+                onClick={() => {
+                  setUserMenuOpen(false);
+                  setShowHelpModal(true);
+                }}
+              >
+                <HelpCircle size={16} className="cpt-popover-icon" />
+                <span>Help</span>
+                <ChevronRight size={15} className="cpt-popover-arrow" />
+              </button>
+
+              <button 
+                className="cpt-popover-item cpt-popover-logout"
+                onClick={() => {
+                  setUserMenuOpen(false);
+                  logout();
+                  window.location.href = '/login';
+                }}
+              >
+                <LogOut size={16} className="cpt-popover-icon" />
+                <span>Log out</span>
+              </button>
+            </div>
+          )}
+
+          <div 
+            className={`cpt-user-profile ${userMenuOpen ? 'active' : ''}`}
+            onClick={() => setUserMenuOpen(!userMenuOpen)}
+          >
+            <div className="cpt-user-avatar">
+              <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=222222&color=ffffff&bold=true`} alt="User" />
+            </div>
+            <div className="cpt-user-info">
+              <span className="cpt-user-name">{capitalizedUserName}</span>
+            </div>
+            <div className="cpt-user-profile-trailing">
+              <Store size={15} />
+            </div>
           </div>
         </div>
       </aside>
 
-      {/* ── Main Chat Area ── */}
+      {/* ──────────────── MAIN AREA ──────────────── */}
       <main className="cpt-main">
-        {/* Top bar */}
-        <header className="cpt-topbar">
-          <div className="cpt-topbar__left">
-            <button
-              className="cpt-toggle-btn"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2"/>
-                <path d="M9 3v18" stroke="currentColor" strokeWidth="2"/>
-              </svg>
-            </button>
 
-            <div className="cpt-model-selector">
-              <span className="cpt-model-dot" />
-              <span>Univance Intelligence 4o (General Video Mode)</span>
+        {/* Command Toast Notification */}
+        {commandNotification && (
+          <div className="cpt-command-toast">
+            <span>{commandNotification.text}</span>
+          </div>
+        )}
+
+        {/* Topbar */}
+        <header className="cpt-topbar">
+          <div className="cpt-topbar-left">
+            {!sidebarOpen ? (
+              <div className="cpt-topbar-brand-wrap">
+                <button
+                  className="cpt-icon-btn"
+                  onClick={() => setSidebarOpen(true)}
+                  title="Open sidebar"
+                >
+                  <PanelLeft size={18} />
+                </button>
+                <div className="cpt-topbar-brand" onClick={handleNewChat}>
+                  <span className="cpt-brand-name">Chorus</span>
+                  <span className="cpt-brand-badge">{activeMode === 'cyber' ? 'CYBER' : 'AI'}</span>
+                </div>
+              </div>
+            ) : (
+              <div />
+            )}
+          </div>
+
+          {/* Mode Pill Toggle */}
+          <div className="cpt-topbar-center">
+            <div className="cpt-mode-toggle">
+              <button
+                className={`cpt-toggle-btn ${activeMode === 'general' ? 'active' : ''}`}
+                onClick={() => handleSwitchMode('general')}
+                title="Video Analytics & Summarizer"
+              >
+                <Film size={13} style={{ marginRight: '6px', verticalAlign: '-1px' }} />
+                <span>Video Analytics & Summarizer</span>
+              </button>
+              <button
+                className={`cpt-toggle-btn ${activeMode === 'cyber' ? 'active-cyber' : ''}`}
+                onClick={() => handleSwitchMode('cyber')}
+                title="Forensic Cyber Threat & Deepfake Audit"
+              >
+                <ShieldAlert size={13} style={{ marginRight: '6px', verticalAlign: '-1px' }} />
+                <span>Cyber Forensics</span>
+              </button>
             </div>
           </div>
 
-          <div className="cpt-topbar__right">
-            {onGoToEvidence && (
-              <button className="cpt-mode-switch-btn" onClick={onGoToEvidence}>
-                <span>Evidence Room</span>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              </button>
-            )}
-          </div>
+          <div className="cpt-topbar-right" />
         </header>
 
-        {/* Chat Messages Stream */}
-        <div className="cpt-chat-stream">
-          <div className="cpt-content-width">
-            
-            {/* Empty State / Welcome Screen */}
-            {(!activeSession || (!activeSession.summary && (!activeSession.messages || activeSession.messages.length === 0))) && (
-              <div className="cpt-empty-state">
-                <div className="cpt-empty-icon">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2v10z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
-                <h1 className="cpt-empty-title">What video would you like to summarize?</h1>
-                <p className="cpt-empty-subtitle">
-                  Upload any video recording, meeting, or paste a URL to receive an executive AI briefing with key decisions and actionable takeaways.
-                </p>
+        {/* Dedicated Distinct Modals */}
+        <UserProfileModal 
+          isOpen={showProfileModal} 
+          onClose={() => setShowProfileModal(false)} 
+          userName={capitalizedUserName} 
+          userEmail={user?.email} 
+        />
+        <AppSettingsModal 
+          isOpen={showSettingsModal} 
+          onClose={() => setShowSettingsModal(false)} 
+        />
+        <HelpSupportModal 
+          isOpen={showHelpModal} 
+          onClose={() => setShowHelpModal(false)} 
+          onOpenEvidence={handleOpenEvidenceRoom} 
+        />
 
-                <div className="cpt-suggestion-grid">
-                  <div
-                    className="cpt-suggestion-card"
-                    onClick={() => {
-                      setPromptText('Summarize Q3 Business Review video and extract the financial performance benchmarks.');
-                    }}
-                  >
-                    <div className="cpt-suggestion-card__title"><BarChart2 size={16} style={{ marginRight: '6px', verticalAlign: 'text-bottom' }} /> Q3 Performance Review</div>
-                    <div className="cpt-suggestion-card__desc">Synthesize revenue benchmarks, milestones, and over-target delivery.</div>
-                  </div>
+        {/* Content Area */}
+        <div className="cpt-content">
 
-                  <div
-                    className="cpt-suggestion-card"
-                    onClick={() => {
-                      setPromptText('Extract the top decisions, speaker disagreements, and action items from this meeting.');
-                    }}
-                  >
-                    <div className="cpt-suggestion-card__title"><Target size={16} style={{ marginRight: '6px', verticalAlign: 'text-bottom' }} /> Key Decisions & Action Items</div>
-                    <div className="cpt-suggestion-card__desc">Identify assignees, due dates, and strategic takeaways.</div>
-                  </div>
+          {/* EMPTY STATE */}
+          {!activeSession && (
+            <div className="cpt-empty-state">
+              <h1 className="cpt-greeting">
+                {activeMode === 'cyber' ? 'Chorus Cyber Forensics' : `What's next, ${userFirstName}?`}
+              </h1>
+              <p className="cpt-sub-greeting">
+                {activeMode === 'cyber' 
+                  ? 'Neural Deepfake Detection, Frame Tampering & Forensic Timeline Integrity'
+                  : 'Video Analytics, Chapter Summarization & Multimodal Intelligence'
+                }
+              </p>
 
-                  <div
-                    className="cpt-suggestion-card"
-                    onClick={() => {
-                      setPromptText('Generate a timestamped chapter breakdown and sentiment flow of this video call.');
-                    }}
-                  >
-                    <div className="cpt-suggestion-card__title"><Clock size={16} style={{ marginRight: '6px', verticalAlign: 'text-bottom' }} /> Timestamped Chapter Brief</div>
-                    <div className="cpt-suggestion-card__desc">Chronological chapter-by-chapter narrative with exact timestamps.</div>
-                  </div>
+              <ChatInput centered={true} />
 
-                  <div
-                    className="cpt-suggestion-card"
-                    onClick={() => {
-                      setPromptText('Summarize the product keynote reveal and market availability dates.');
-                    }}
-                  >
-                    <div className="cpt-suggestion-card__title"><Lightbulb size={16} style={{ marginRight: '6px', verticalAlign: 'text-bottom' }} /> Product Launch Highlights</div>
-                    <div className="cpt-suggestion-card__desc">Key announcements, feature capabilities, and rollout schedule.</div>
-                  </div>
-                </div>
+              {/* Mode-Specific Quick Suggestion Chips */}
+              <div className="cpt-suggestions-row">
+                {activeMode === 'cyber' ? (
+                  <>
+                    <button 
+                      className="cpt-suggestion-chip"
+                      onClick={() => handleSend("Audit video for facial manipulation, deepfakes, and synthetic artifacts.")}
+                    >
+                      <ShieldAlert size={13} className="cpt-chip-icon cyber" />
+                      <span>Audit for Deepfakes</span>
+                    </button>
+                    <button 
+                      className="cpt-suggestion-chip"
+                      onClick={() => handleSend("Inspect optical flow vectors and check for temporal frame splicing.")}
+                    >
+                      <Zap size={13} className="cpt-chip-icon cyber" />
+                      <span>Detect Frame Splices</span>
+                    </button>
+                    <button 
+                      className="cpt-suggestion-chip"
+                      onClick={() => handleSend("Verify cryptographic video hash against RFC-3161 TSA ledger.")}
+                    >
+                      <Scale size={13} className="cpt-chip-icon cyber" />
+                      <span>Verify Hash Ledger</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button 
+                      className="cpt-suggestion-chip"
+                      onClick={() => handleSend("Summarize this video into key chronological chapters and topics.")}
+                    >
+                      <Film size={13} className="cpt-chip-icon" />
+                      <span>Summarize Chapters</span>
+                    </button>
+                    <button 
+                      className="cpt-suggestion-chip"
+                      onClick={() => handleSend("Analyze multimodal video dynamics, speaker sentiment, and key metrics.")}
+                    >
+                      <Brain size={13} className="cpt-chip-icon" />
+                      <span>Multimodal Analytics</span>
+                    </button>
+                    <button 
+                      className="cpt-suggestion-chip"
+                      onClick={() => handleSend("Extract the primary action sequences and actionable takeaways.")}
+                    >
+                      <Sparkles size={13} className="cpt-chip-icon" />
+                      <span>Actionable Takeaways</span>
+                    </button>
+                  </>
+                )}
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Conversation Stream */}
-            {activeSession && (
-              <div className="cpt-messages-list">
-                
-                {/* Initial User Prompt */}
+          {/* CHAT STREAM */}
+          {activeSession && (
+            <div className="cpt-chat-stream">
+              <div className="cpt-messages-container">
+
+                {/* Initial Prompt */}
                 {activeSession.prompt && (
-                  <div className="cpt-msg-row cpt-msg-row--user">
-                    <div className="cpt-user-bubble">
+                  <div className="cpt-msg user-msg">
+                    <div className="cpt-msg-bubble">
                       {activeSession.videoName && (
-                        <div className="cpt-user-attachment">
-                          <span><Play size={12} fill="currentColor" /></span>
+                        <div className="cpt-msg-attachment-badge">
+                          <Film size={13} />
                           <span>{activeSession.videoName}</span>
                         </div>
                       )}
-                      <div className="cpt-user-text">{activeSession.prompt}</div>
+                      {activeSession.prompt}
                     </div>
                   </div>
                 )}
 
-                {/* Generating / Thinking Indicator */}
-                {isGenerating && (
-                  <div className="cpt-msg-row cpt-msg-row--assistant">
-                    <div className="cpt-ai-avatar"><Sparkles size={18} /></div>
-                    <div className="cpt-ai-body">
-                      <div className="cpt-thinking-box">
-                        <span className="cpt-sparkle-spin"><Sparkles size={16} /></span>
-                        <span className="cpt-thinking-text">{generatingStep || 'Thinking & synthesizing video summary...'}</span>
+                {/* Cyber Mode Report Output */}
+                {activeSession.cyberData && (
+                  <div className="cpt-msg ai-msg">
+                    <div className="cpt-ai-icon cyber-icon">
+                      <ShieldAlert size={16} />
+                    </div>
+                    <div className="cpt-ai-content">
+                      <div className="cpt-markdown">
+
+                        {/* Threat Header & Score Gauge */}
+                        <div className="cpt-cyber-header">
+                          <div>
+                            <div className="cpt-cyber-tag-row">
+                              <span className="cpt-cyber-tag">CYBER MODE ANALYSIS</span>
+                              <span className="cpt-model-indicator-badge">
+                                {activeSession.modelUsed === 'deepthink' ? 'Chorus Deepthink' : 'Chorus Flash'}
+                              </span>
+                            </div>
+                            <h2 className="cpt-cyber-title">{activeSession.cyberData.classification}</h2>
+                          </div>
+
+                          <div className={`cpt-threat-badge ${activeSession.cyberData.threatLevel.toLowerCase()}`}>
+                            <div className="cpt-threat-score">{activeSession.cyberData.threatScore}<span>/100</span></div>
+                            <div className="cpt-threat-label">{activeSession.cyberData.threatLevel} THREAT</div>
+                          </div>
+                        </div>
+
+                        {/* Collapsible Deepthink Thought Process if available */}
+                        {activeSession.messages?.[1]?.thoughtProcess && (
+                          <div className="cpt-thought-container">
+                            <button
+                              type="button"
+                              className="cpt-thought-toggle"
+                              onClick={() => toggleThought(activeSession.messages[1].id)}
+                            >
+                              <div className="cpt-thought-header-left">
+                                <Brain size={14} className="cpt-thought-icon" />
+                                <span className="cpt-thought-label">
+                                  {expandedThoughts[activeSession.messages[1].id] ? 'Forensic Reasoning Steps' : `Thought for ${activeSession.messages[1].thoughtTime || '3.4s'}`}
+                                </span>
+                              </div>
+                              <ChevronDown size={14} className={`cpt-thought-arrow ${expandedThoughts[activeSession.messages[1].id] ? 'expanded' : ''}`} />
+                            </button>
+                            {expandedThoughts[activeSession.messages[1].id] && (
+                              <div className="cpt-thought-content">
+                                {activeSession.messages[1].thoughtProcess.map((step, sIdx) => (
+                                  <div key={sIdx} className="cpt-thought-step">
+                                    <span className="cpt-thought-step-num">{sIdx + 1}</span>
+                                    <span className="cpt-thought-step-text">{step}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Status bar */}
+                        <div className="cpt-cyber-status-bar">
+                          <div className="cpt-status-item">
+                            <span className="cpt-status-label">Integrity Status:</span>
+                            <span className="cpt-status-val danger">{activeSession.cyberData.integrityStatus}</span>
+                          </div>
+                          <div className="cpt-status-item">
+                            <span className="cpt-status-label">Ledger Hash:</span>
+                            <span className="cpt-status-val">{activeSession.cyberData.hashMatch}</span>
+                          </div>
+                        </div>
+
+                        {/* Anomalies Detected */}
+                        <h3>Detected Anomalies & Tamper Indicators</h3>
+                        <div className="cpt-cyber-anomalies">
+                          {activeSession.cyberData.anomalies.map((ano, i) => (
+                            <div key={i} className="cpt-anomaly-card">
+                              <div className="cpt-anomaly-header">
+                                <span className="cpt-anomaly-time">{ano.time}</span>
+                                <span className="cpt-anomaly-type">{ano.type}</span>
+                                <span className={`cpt-anomaly-sev ${ano.severity.toLowerCase()}`}>{ano.severity}</span>
+                              </div>
+                              <p className="cpt-anomaly-desc">{ano.desc}</p>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Mitigation Actions */}
+                        <h3>Cyber Mitigation & Follow-up Actions</h3>
+                        <ul className="cpt-action-list">
+                          {activeSession.cyberData.mitigationActions.map((act, i) => (
+                            <li key={i}>{act}</li>
+                          ))}
+                        </ul>
+
+                        {/* Action buttons */}
+                        <div className="cpt-ai-actions-bar">
+                          <button
+                            className="cpt-msg-action-btn"
+                            onClick={() => handleCopy(JSON.stringify(activeSession.cyberData, null, 2), 'cyber-data')}
+                          >
+                            {copiedId === 'cyber-data' ? <Check size={14} /> : <Copy size={14} />}
+                            <span>{copiedId === 'cyber-data' ? 'Copied' : 'Copy'}</span>
+                          </button>
+                          <button className="cpt-msg-action-btn"><ThumbsUp size={14} /></button>
+                          <button className="cpt-msg-action-btn"><ThumbsDown size={14} /></button>
+                          <button
+                            className="cpt-msg-action-btn"
+                            onClick={() => handleSend(activeSession.prompt)}
+                          >
+                            <RotateCcw size={14} />
+                            <span>Rescan</span>
+                          </button>
+                          <button
+                            className="cpt-msg-action-btn highlight-evidence"
+                            onClick={handleOpenEvidenceRoom}
+                            title="Verify in Evidence Room Scrubber"
+                          >
+                            <Scale size={14} />
+                            <span>Open in Evidence Room ↗</span>
+                          </button>
+                        </div>
+
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* Full Executive Summary Display */}
+                {/* General Mode Summary Output */}
                 {activeSession.summary && (
-                  <div className="cpt-msg-row cpt-msg-row--assistant">
-                    <div className="cpt-ai-avatar"><Sparkles size={18} /></div>
-                    <div className="cpt-ai-body">
-                      <div className="cpt-summary-card">
-                        
-                        {/* Header Hero */}
-                        <div className="cpt-summary-card__hero">
-                          <div className="cpt-summary-card__tag">
-                            <span><Sparkles size={12} /></span>
-                            <span>Executive Video Summary</span>
-                          </div>
-                          <h2 className="cpt-summary-card__title">{activeSession.summary.title}</h2>
-                          <p className="cpt-summary-card__lead">{activeSession.summary.overview}</p>
-                        </div>
+                  <div className="cpt-msg ai-msg">
+                    <div className="cpt-ai-icon">
+                      <Sparkles size={16} />
+                    </div>
+                    <div className="cpt-ai-content">
+                      <div className="cpt-markdown">
 
-                        {/* Core Key Takeaways */}
-                        <div className="cpt-summary-card__section">
-                          <div className="cpt-sec-heading">
-                            <span><Target size={16} /></span>
-                            <span>Core Takeaways & Findings</span>
-                          </div>
-                          <div className="cpt-takeaways-list">
-                            {activeSession.summary.takeaways.map((t, idx) => (
-                              <div key={idx} className="cpt-takeaway-item">
-                                <span className="cpt-takeaway-bullet"><span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'currentColor', verticalAlign: 'middle' }} /></span>
-                                <div className="cpt-takeaway-text">
-                                  <strong>{t.label}:</strong> {t.detail}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Timeline Chapters */}
-                        <div className="cpt-summary-card__section">
-                          <div className="cpt-sec-heading">
-                            <span><Clock size={16} /></span>
-                            <span>Timestamped Narrative Breakdown</span>
-                          </div>
-                          <div className="cpt-timeline-list">
-                            {activeSession.summary.chapters.map((c, idx) => (
-                              <div key={idx} className="cpt-timeline-item">
-                                <span className="cpt-timeline-pill">{c.time}</span>
-                                <div className="cpt-timeline-content">
-                                  <div className="cpt-timeline-title">{c.title}</div>
-                                  <div className="cpt-timeline-desc">{c.desc}</div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Dynamics & Sentiment */}
-                        {activeSession.summary.dynamics && (
-                          <div className="cpt-summary-card__section">
-                            <div className="cpt-sec-heading">
-                              <span><Users size={16} /></span>
-                              <span>Discussion Dynamics & Sentiment</span>
+                        <div className="cpt-summary-header">
+                          <div>
+                            <div className="cpt-summary-title-row">
+                              <h2>{activeSession.summary.title}</h2>
+                              <span className="cpt-model-indicator-badge">
+                                {activeSession.modelUsed === 'deepthink' ? 'Chorus Deepthink' : 'Chorus Flash'}
+                              </span>
                             </div>
-                            <div className="cpt-dynamics-grid">
-                              <div className="cpt-dynamic-card">
-                                <div className="cpt-dynamic-label">Discussion Tone</div>
-                                <div className="cpt-dynamic-val">{activeSession.summary.dynamics.tone}</div>
-                              </div>
-                              <div className="cpt-dynamic-card">
-                                <div className="cpt-dynamic-label">Audience Engagement</div>
-                                <div className="cpt-dynamic-val">{activeSession.summary.dynamics.engagement}</div>
-                              </div>
-                              <div className="cpt-dynamic-card">
-                                <div className="cpt-dynamic-label">Participants</div>
-                                <div className="cpt-dynamic-val">{activeSession.summary.dynamics.speakers}</div>
-                              </div>
-                              <div className="cpt-dynamic-card">
-                                <div className="cpt-dynamic-label">Sentiment Profile</div>
-                                <div className="cpt-dynamic-val">{activeSession.summary.dynamics.sentiment}</div>
-                              </div>
+                          </div>
+                          {activeSession.summary.dynamics && (
+                            <div className="cpt-status-pills">
+                              <span className="cpt-pill neutral">
+                                <Clock size={12} /> {activeSession.summary.dynamics.analyzedFrames}
+                              </span>
                             </div>
+                          )}
+                        </div>
+
+                        {/* Collapsible Deepthink Thought Process if available */}
+                        {activeSession.messages?.[1]?.thoughtProcess && (
+                          <div className="cpt-thought-container">
+                            <button
+                              type="button"
+                              className="cpt-thought-toggle"
+                              onClick={() => toggleThought(activeSession.messages[1].id)}
+                            >
+                              <div className="cpt-thought-header-left">
+                                <Brain size={14} className="cpt-thought-icon" />
+                                <span className="cpt-thought-label">
+                                  {expandedThoughts[activeSession.messages[1].id] ? 'Multimodal Reasoning Steps' : `Thought for ${activeSession.messages[1].thoughtTime || '2.8s'}`}
+                                </span>
+                              </div>
+                              <ChevronDown size={14} className={`cpt-thought-arrow ${expandedThoughts[activeSession.messages[1].id] ? 'expanded' : ''}`} />
+                            </button>
+                            {expandedThoughts[activeSession.messages[1].id] && (
+                              <div className="cpt-thought-content">
+                                {activeSession.messages[1].thoughtProcess.map((step, sIdx) => (
+                                  <div key={sIdx} className="cpt-thought-step">
+                                    <span className="cpt-thought-step-num">{sIdx + 1}</span>
+                                    <span className="cpt-thought-step-text">{step}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         )}
 
-                        {/* Action Items */}
-                        <div className="cpt-summary-card__section">
-                          <div className="cpt-sec-heading">
-                            <span><Pin size={16} /></span>
-                            <span>Recommended Action Items</span>
-                          </div>
-                          <div className="cpt-actions-list">
-                            {activeSession.summary.actionItems.map((item, idx) => (
-                              <div key={idx} className="cpt-action-item">
-                                <span className="cpt-action-num">{idx + 1}</span>
-                                <span>{item}</span>
-                              </div>
-                            ))}
-                          </div>
+                        <p className="cpt-overview-text">{activeSession.summary.overview}</p>
+
+                        <h3>Key Takeaways</h3>
+                        <div className="cpt-takeaways-grid">
+                          {activeSession.summary.takeaways.map((t, i) => (
+                            <div key={i} className="cpt-takeaway-card">
+                              <span className="cpt-takeaway-label">{t.label}</span>
+                              <span className="cpt-takeaway-detail">{t.detail}</span>
+                            </div>
+                          ))}
                         </div>
 
-                        {/* Action Bar */}
-                        <div className="cpt-summary-actions">
-                          <div className="cpt-action-btn-group">
-                            <button
-                              className="cpt-tool-btn"
-                              onClick={() => handleCopySummary(activeSession.summary)}
-                            >
-                              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>{copied ? <Check size={14} /> : <Copy size={14} />} {copied ? 'Copied!' : 'Copy Summary'}</span>
-                            </button>
-                            <button
-                              className="cpt-tool-btn"
-                              onClick={() => {
-                                handleSend();
-                              }}
-                            >
-                              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><RefreshCcw size={14} /> Regenerate</span>
-                            </button>
-                          </div>
+                        {activeSession.summary.chapters?.length > 0 && (
+                          <>
+                            <h3>Scene Chapters</h3>
+                            <div className="cpt-chapters-list">
+                              {activeSession.summary.chapters.map((c, i) => (
+                                <div key={i} className="cpt-chapter-row">
+                                  <span className="cpt-chapter-time">{c.time}</span>
+                                  <div className="cpt-chapter-body">
+                                    <strong>{c.title}</strong>
+                                    <p>{c.desc}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </>
+                        )}
+
+                        {activeSession.summary.actionItems?.length > 0 && (
+                          <>
+                            <h3>Action Items</h3>
+                            <ul className="cpt-action-list">
+                              {activeSession.summary.actionItems.map((a, i) => (
+                                <li key={i}>{a}</li>
+                              ))}
+                            </ul>
+                          </>
+                        )}
+
+                        <div className="cpt-ai-actions-bar">
+                          <button
+                            className="cpt-msg-action-btn"
+                            onClick={() => handleCopy(activeSession.summary.overview, 'summary')}
+                          >
+                            {copiedId === 'summary' ? <Check size={14} /> : <Copy size={14} />}
+                            <span>{copiedId === 'summary' ? 'Copied' : 'Copy'}</span>
+                          </button>
+                          <button className="cpt-msg-action-btn"><ThumbsUp size={14} /></button>
+                          <button className="cpt-msg-action-btn"><ThumbsDown size={14} /></button>
+                          <button
+                            className="cpt-msg-action-btn"
+                            onClick={() => handleSend(activeSession.prompt)}
+                          >
+                            <RotateCcw size={14} />
+                            <span>Regenerate</span>
+                          </button>
+                          <button
+                            className="cpt-msg-action-btn highlight-evidence"
+                            onClick={handleOpenEvidenceRoom}
+                          >
+                            <Scale size={14} />
+                            <span>Evidence Room ↗</span>
+                          </button>
                         </div>
 
                       </div>
@@ -681,119 +1406,108 @@ ${summary.actionItems.map((a, i) => `${i + 1}. ${a}`).join('\n')}
                   </div>
                 )}
 
-                {/* Additional Follow-Up Q&A Messages */}
-                {activeSession.messages && activeSession.messages.slice(2).map((msg, index) => (
-                  <div
-                    key={index}
-                    className={`cpt-msg-row ${msg.sender === 'user' ? 'cpt-msg-row--user' : 'cpt-msg-row--assistant'}`}
-                  >
-                    {msg.sender === 'user' ? (
-                      <div className="cpt-user-bubble">
-                        {msg.attachment && (
-                          <div className="cpt-user-attachment">
-                            <span><Play size={12} fill="currentColor" /></span>
-                            <span>{msg.attachment}</span>
-                          </div>
-                        )}
-                        <div className="cpt-user-text">{msg.text}</div>
+                {/* Follow-up messages */}
+                {activeSession.messages?.slice(2).map((msg) => (
+                  <div key={msg.id || Math.random()} className={`cpt-msg ${msg.sender === 'user' ? 'user-msg' : 'ai-msg'}`}>
+                    {msg.sender === 'assistant' && (
+                      <div className={`cpt-ai-icon ${activeMode === 'cyber' ? 'cyber-icon' : (msg.modelUsed === 'deepthink' ? 'deepthink-icon' : '')}`}>
+                        {activeMode === 'cyber' ? <ShieldAlert size={16} /> : (msg.modelUsed === 'deepthink' ? <Brain size={16} /> : <Sparkles size={16} />)}
                       </div>
-                    ) : (
-                      <>
-                        <div className="cpt-ai-avatar"><Sparkles size={18} /></div>
-                        <div className="cpt-ai-body">
-                          <div className="cpt-followup-text">
-                            {msg.text}
+                    )}
+                    <div className={msg.sender === 'user' ? 'cpt-msg-bubble' : 'cpt-ai-content'}>
+                      {msg.sender === 'user' ? (
+                        msg.text
+                      ) : (
+                        <div className="cpt-markdown">
+                          {msg.modelUsed && (
+                            <div style={{ marginBottom: '8px' }}>
+                              <span className="cpt-model-indicator-badge">
+                                {msg.modelUsed === 'deepthink' ? 'Chorus Deepthink' : 'Chorus Flash'}
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Collapsible Deepthink Thought Process if available */}
+                          {msg.thoughtProcess && (
+                            <div className="cpt-thought-container">
+                              <button
+                                type="button"
+                                className="cpt-thought-toggle"
+                                onClick={() => toggleThought(msg.id)}
+                              >
+                                <div className="cpt-thought-header-left">
+                                  <Brain size={14} className="cpt-thought-icon" />
+                                  <span className="cpt-thought-label">
+                                    {expandedThoughts[msg.id] ? 'Forensic Reasoning Steps' : `Thought for ${msg.thoughtTime || '2.1s'}`}
+                                  </span>
+                                </div>
+                                <ChevronDown size={14} className={`cpt-thought-arrow ${expandedThoughts[msg.id] ? 'expanded' : ''}`} />
+                              </button>
+                              {expandedThoughts[msg.id] && (
+                                <div className="cpt-thought-content">
+                                  {msg.thoughtProcess.map((step, sIdx) => (
+                                    <div key={sIdx} className="cpt-thought-step">
+                                      <span className="cpt-thought-step-num">{sIdx + 1}</span>
+                                      <span className="cpt-thought-step-text">{step}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          <p style={{ whiteSpace: 'pre-line' }}>{msg.text}</p>
+                          <div className="cpt-ai-actions-bar">
+                            <button
+                              className="cpt-msg-action-btn"
+                              onClick={() => handleCopy(msg.text, msg.id)}
+                            >
+                              {copiedId === msg.id ? <Check size={14} /> : <Copy size={14} />}
+                            </button>
+                            <button className="cpt-msg-action-btn"><ThumbsUp size={14} /></button>
+                            <button className="cpt-msg-action-btn"><ThumbsDown size={14} /></button>
                           </div>
                         </div>
-                      </>
-                    )}
+                      )}
+                    </div>
                   </div>
                 ))}
 
+                {/* Loading indicator */}
+                {isGenerating && (
+                  <div className="cpt-msg ai-msg">
+                    <div className={`cpt-ai-icon ${activeMode === 'cyber' ? 'cyber-icon' : (selectedModel === 'deepthink' ? 'deepthink-icon' : '')}`}>
+                      {activeMode === 'cyber' ? <ShieldAlert size={16} /> : (selectedModel === 'deepthink' ? <Brain size={16} /> : <Zap size={16} />)}
+                    </div>
+                    <div className="cpt-ai-content cpt-loading">
+                      {isThinking ? (
+                        <div className="cpt-thinking-step">
+                          <Brain size={14} className="cpt-spin-slow" />
+                          <span>{activeMode === 'cyber' ? 'Chorus Deepthink: Analyzing optical vectors & tamper signatures...' : 'Chorus Deepthink: Synthesizing multimodal video intelligence & reasoning...'}</span>
+                        </div>
+                      ) : (
+                        <div className="cpt-thinking-step">
+                          <Zap size={14} />
+                          <span>Chorus Flash: Streaming real-time response...</span>
+                        </div>
+                      )}
+                      <div className="cpt-dot-flashing"></div>
+                    </div>
+                  </div>
+                )}
+
                 <div ref={messagesEndRef} />
               </div>
-            )}
 
-          </div>
-        </div>
-
-        {/* ── Bottom Input Area (ChatGPT Style) ── */}
-        <div className="cpt-input-area">
-          <div className="cpt-input-wrapper">
-            
-            {attachedFile && (
-              <div className="cpt-file-chip">
-                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Film size={14} /> {attachedFile.name}</span>
-                <button
-                  className="cpt-file-chip__remove"
-                  onClick={() => setAttachedFile(null)}
-                >
-                  <X size={12} />
-                </button>
+              {/* Chat Input pinned to bottom */}
+              <div className="cpt-bottom-input-container">
+                <ChatInput centered={false} />
               </div>
-            )}
 
-            <div className="cpt-input-pill">
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="sr-only"
-                accept=".mp4,.mov,.avi,.webm,.mkv,.mp3,.wav"
-                onChange={(e) => {
-                  const f = e.target.files[0];
-                  if (f) setAttachedFile(f);
-                }}
-              />
-
-              <button
-                className="cpt-attach-btn"
-                onClick={() => fileInputRef.current?.click()}
-                title="Attach video or audio file"
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
-
-              <textarea
-                className="cpt-textarea"
-                placeholder={
-                  activeSession?.summary
-                    ? "Ask a follow-up question about this summary (e.g. 'What was said about marketing?')..."
-                    : "Paste a video URL or describe the video to summarize..."
-                }
-                value={promptText}
-                onChange={(e) => setPromptText(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
-                rows={1}
-              />
-
-              <button
-                className={`cpt-send-btn ${(promptText.trim() || attachedFile) && !isGenerating ? 'active' : ''}`}
-                disabled={(!promptText.trim() && !attachedFile) || isGenerating}
-                onClick={handleSend}
-                title="Send"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 19V5M5 12l7-7 7 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-              </button>
             </div>
-
-            <div className="cpt-disclaimer">
-              Univance AI analyzes full multimodal timelines. Verify important dates and figures.
-            </div>
-
-          </div>
+          )}
         </div>
-
       </main>
-
     </div>
   );
 }
