@@ -88,7 +88,7 @@ def run_text_analysis(user_prompt, metadata, raw_text=""):
 
     context = ""
     if raw_text:
-        context = f"\\n\\nContext / Scraped Text:\\n{raw_text[:2000]}" # Limit to 2000 chars
+        context = f"\n\nContext / Scraped Text:\n{raw_text[:32000]}"
 
     messages = [
         {"role": "system", "content": system_prompt},
@@ -104,7 +104,7 @@ def run_text_analysis(user_prompt, metadata, raw_text=""):
     model_inputs = tokenizer([text], return_tensors="pt").to(_device)
 
     try:
-        generated_ids = model.generate(**model_inputs, max_new_tokens=1024)
+        generated_ids = model.generate(**model_inputs, max_new_tokens=2048)
         generated_ids_trimmed = [
             out_ids[len(in_ids):] for in_ids, out_ids in zip(model_inputs.input_ids, generated_ids)
         ]

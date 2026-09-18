@@ -212,6 +212,10 @@ def run(args: dict) -> dict:
         audit.log_tool_result(TOOL_NAME, case_id, result)
         return result
 
+    # Special handling for YouTube thumbnail URLs - log for forensics
+    if image_url.startswith("https://img.youtube.com/vi/"):
+        log.info(f"Reverse search using YouTube thumbnail: {image_url[:80]}...")
+
     # --- call with retries ---
     last_error: str = ""
     for attempt in range(config.MAX_RETRIES + 1):

@@ -70,15 +70,44 @@ const oauthRedirect = (req, res) => {
   // Generate a token for the OAuth user and redirect to frontend with token
   const token = jwt.sign({ id: req.user._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
   // Redirect to frontend (in production, FRONTEND_URL is used)
-  res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${token}`);
+  res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/auth/callback?token=${token}`);
 };
 
+const isGoogleConfigured = () =>
+  Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && !process.env.GOOGLE_CLIENT_ID.includes('your_google_client_id'));
+
+const isGithubConfigured = () =>
+  Boolean(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET && !process.env.GITHUB_CLIENT_ID.includes('your_github_client_id'));
+
 // Google Auth
-router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-router.get('/google/callback', passport.authenticate('google', { failureRedirect: '/login', session: false }), oauthRedirect);
+router.get('/google', (req, res, next) => {
+  if (!isGoogleConfigured()) {
+    return res.status(503).json({ success: false, error: 'Google OAuth is not configured on this server.' });
+  }
+  passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
+});
+
+router.get('/google/callback', (req, res, next) => {
+  if (!isGoogleConfigured()) {
+    return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=Google+OAuth+not+configured`);
+  }
+  passport.authenticate('google', { failureRedirect: '/login', session: false })(req, res, next);
+}, oauthRedirect);
 
 // GitHub Auth
-router.get('/github', passport.authenticate('github', { scope: ['user:email'] }));
-router.get('/github/callback', passport.authenticate('github', { failureRedirect: '/login', session: false }), oauthRedirect);
+router.get('/github', (req, res, next) => {
+  if (!isGithubConfigured()) {
+    return res.status(503).json({ success: false, error: 'GitHub OAuth is not configured on this server.' });
+  }
+  passport.authenticate('github', { scope: ['user:email'] })(req, res, next);
+});
+
+router.get('/github/callback', (req, res, next) => {
+  if (!isGithubConfigured()) {
+    return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=GitHub+OAuth+not+configured`);
+  }
+  passport.authenticate('github', { failureRedirect: '/login', session: false })(req, res, next);
+}, oauthRedirect);
 
 module.exports = router;
+
