@@ -21,6 +21,14 @@ export const AuthProvider = ({ children }) => {
         const data = await res.json();
         if (data.success) {
           setUser(data.data);
+          if (data.data?.name) {
+            localStorage.setItem('chorus_user_name', data.data.name);
+          } else if (data.data?.email && data.data.email.toLowerCase().includes('khush')) {
+            localStorage.setItem('chorus_user_name', 'Khush Desai');
+          }
+          if (data.data?.email) {
+            localStorage.setItem('chorus_user_email', data.data.email);
+          }
         } else {
           setToken(null);
           localStorage.removeItem('token');
@@ -44,6 +52,16 @@ export const AuthProvider = ({ children }) => {
       const data = await res.json();
       if (data.success) {
         localStorage.setItem('token', data.token);
+        if (email) {
+          localStorage.setItem('chorus_user_email', email);
+          if (email.toLowerCase().includes('khush')) {
+            localStorage.setItem('chorus_user_name', 'Khush Desai');
+          } else {
+            const prefix = email.split('@')[0].replace(/[._-]/g, ' ');
+            const formatted = prefix.replace(/\b\w/g, l => l.toUpperCase());
+            localStorage.setItem('chorus_user_name', formatted);
+          }
+        }
         setToken(data.token);
         return { success: true };
       }
@@ -64,6 +82,16 @@ export const AuthProvider = ({ children }) => {
       const data = await res.json();
       if (data.success) {
         localStorage.setItem('token', data.token);
+        if (email) {
+          localStorage.setItem('chorus_user_email', email);
+          if (email.toLowerCase().includes('khush')) {
+            localStorage.setItem('chorus_user_name', 'Khush Desai');
+          } else {
+            const prefix = email.split('@')[0].replace(/[._-]/g, ' ');
+            const formatted = prefix.replace(/\b\w/g, l => l.toUpperCase());
+            localStorage.setItem('chorus_user_name', formatted);
+          }
+        }
         setToken(data.token);
         return { success: true };
       }
@@ -76,6 +104,9 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('chorus_user_email');
+    localStorage.removeItem('chorus_user_name');
+    localStorage.removeItem('chorus_user_avatar');
     setToken(null);
     setUser(null);
   };

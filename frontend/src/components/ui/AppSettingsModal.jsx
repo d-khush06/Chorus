@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
-import { X, Settings, Sliders, ShieldAlert, Key, Database, Check } from 'lucide-react';
 import './UserMenuModals.css';
 
 export default function AppSettingsModal({ isOpen, onClose }) {
   const [activeTab, setActiveTab] = useState('general');
+  const [defaultModel, setDefaultModel] = useState('flash');
   const [streamResponse, setStreamResponse] = useState(true);
   const [soundAlerts, setSoundAlerts] = useState(false);
   const [sensitivity, setSensitivity] = useState('High');
-  const [hashLedger, setHashLedger] = useState(true);
+  const [hashVerification, setHashVerification] = useState(true);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [autoLock, setAutoLock] = useState('30m');
   const [saved, setSaved] = useState(false);
 
   if (!isOpen) return null;
@@ -26,59 +27,69 @@ export default function AppSettingsModal({ isOpen, onClose }) {
   return (
     <div className="umm-overlay" onClick={onClose}>
       <div className="umm-modal umm-modal-wide" onClick={e => e.stopPropagation()}>
+        {/* Header (No icons) */}
         <div className="umm-header">
           <div className="umm-header-left">
-            <span className="umm-header-icon"><Settings size={18} /></span>
-            <h2>Settings & Preferences</h2>
+            <h2>Settings</h2>
+            <span className="umm-header-subtitle">Preferences and system configuration</span>
           </div>
-          <button className="umm-close-btn" onClick={onClose}>
-            <X size={18} />
+          <button className="umm-close-btn" onClick={onClose} aria-label="Close">
+            &times;
           </button>
         </div>
 
-        {/* Tab Navigation */}
+        {/* Tab Navigation (Text only, no icons) */}
         <div className="umm-tabs">
           <button 
             type="button"
             className={`umm-tab-btn ${activeTab === 'general' ? 'active' : ''}`}
             onClick={() => setActiveTab('general')}
           >
-            <Settings size={14} />
-            <span>General</span>
+            General
           </button>
           <button 
             type="button"
             className={`umm-tab-btn ${activeTab === 'forensics' ? 'active' : ''}`}
             onClick={() => setActiveTab('forensics')}
           >
-            <ShieldAlert size={14} />
-            <span>AI & Forensics</span>
+            Forensics
           </button>
           <button 
             type="button"
             className={`umm-tab-btn ${activeTab === 'security' ? 'active' : ''}`}
             onClick={() => setActiveTab('security')}
           >
-            <Key size={14} />
-            <span>Security</span>
+            Security
           </button>
           <button 
             type="button"
             className={`umm-tab-btn ${activeTab === 'data' ? 'active' : ''}`}
             onClick={() => setActiveTab('data')}
           >
-            <Database size={14} />
-            <span>Data Controls</span>
+            Data
           </button>
         </div>
 
-        <div className="umm-body">
+        {/* Form Body (No colors, No icons) */}
+        <form className="umm-body" onSubmit={handleSave}>
           {activeTab === 'general' && (
             <>
+              <div className="umm-form-group">
+                <label>Default Model</label>
+                <select
+                  className="umm-input"
+                  value={defaultModel}
+                  onChange={e => setDefaultModel(e.target.value)}
+                >
+                  <option value="flash">Chorus Flash (Fast, 800ms)</option>
+                  <option value="deepthink">Chorus Deepthink (Detailed reasoning)</option>
+                </select>
+              </div>
+
               <div className="umm-toggle-row">
                 <div className="umm-toggle-info">
-                  <span className="umm-toggle-title">Real-time Stream Generation</span>
-                  <span className="umm-toggle-desc">Show intelligence tokens progressively as the model synthesizes them.</span>
+                  <span className="umm-toggle-title">Stream response</span>
+                  <span className="umm-toggle-desc">Show text progressively as it is generated</span>
                 </div>
                 <label className="umm-switch">
                   <input 
@@ -86,14 +97,14 @@ export default function AppSettingsModal({ isOpen, onClose }) {
                     checked={streamResponse} 
                     onChange={e => setStreamResponse(e.target.checked)} 
                   />
-                  <span className="umm-slider"></span>
+                  <span className="umm-slider" />
                 </label>
               </div>
 
               <div className="umm-toggle-row">
                 <div className="umm-toggle-info">
-                  <span className="umm-toggle-title">Auditory Critical Alerts</span>
-                  <span className="umm-toggle-desc">Play chime notification when high-severity tamper anomalies are flagged.</span>
+                  <span className="umm-toggle-title">Sound notifications</span>
+                  <span className="umm-toggle-desc">Play chime when high-severity anomalies are detected</span>
                 </div>
                 <label className="umm-switch">
                   <input 
@@ -101,19 +112,8 @@ export default function AppSettingsModal({ isOpen, onClose }) {
                     checked={soundAlerts} 
                     onChange={e => setSoundAlerts(e.target.checked)} 
                   />
-                  <span className="umm-slider"></span>
+                  <span className="umm-slider" />
                 </label>
-              </div>
-
-              <div className="umm-form-group">
-                <label>Default Interface Theme</label>
-                <input 
-                  type="text" 
-                  className="umm-input" 
-                  value="Cyber Pure Dark & Obsidian Glow (Default)" 
-                  disabled 
-                  style={{ opacity: 0.8, cursor: 'not-allowed' }}
-                />
               </div>
             </>
           )}
@@ -121,31 +121,30 @@ export default function AppSettingsModal({ isOpen, onClose }) {
           {activeTab === 'forensics' && (
             <>
               <div className="umm-form-group">
-                <label>Tamper Anomaly Detection Sensitivity</label>
+                <label>Detection Sensitivity</label>
                 <select 
                   className="umm-input"
                   value={sensitivity} 
                   onChange={e => setSensitivity(e.target.value)}
-                  style={{ cursor: 'pointer' }}
                 >
-                  <option value="Maximum">Maximum (Flag minor frame discrepancies)</option>
-                  <option value="High">High (Standard Enterprise Forensic Protocol)</option>
-                  <option value="Balanced">Balanced (General review with moderate threshold)</option>
+                  <option value="Maximum">Maximum (Flag minor discrepancies)</option>
+                  <option value="High">High (Recommended)</option>
+                  <option value="Balanced">Balanced (Standard)</option>
                 </select>
               </div>
 
               <div className="umm-toggle-row">
                 <div className="umm-toggle-info">
-                  <span className="umm-toggle-title">Automated Cryptographic Hash Verification</span>
-                  <span className="umm-toggle-desc">Continuously verify SHA-256 signatures against camera hardware ledger.</span>
+                  <span className="umm-toggle-title">Hash verification</span>
+                  <span className="umm-toggle-desc">Continuously check SHA-256 signatures against stream source</span>
                 </div>
                 <label className="umm-switch">
                   <input 
                     type="checkbox" 
-                    checked={hashLedger} 
-                    onChange={e => setHashLedger(e.target.checked)} 
+                    checked={hashVerification} 
+                    onChange={e => setHashVerification(e.target.checked)} 
                   />
-                  <span className="umm-slider"></span>
+                  <span className="umm-slider" />
                 </label>
               </div>
             </>
@@ -163,6 +162,7 @@ export default function AppSettingsModal({ isOpen, onClose }) {
                   placeholder="Enter current password"
                 />
               </div>
+
               <div className="umm-form-group">
                 <label>New Password</label>
                 <input 
@@ -173,6 +173,20 @@ export default function AppSettingsModal({ isOpen, onClose }) {
                   placeholder="Enter new password"
                 />
               </div>
+
+              <div className="umm-form-group">
+                <label>Session Timeout</label>
+                <select
+                  className="umm-input"
+                  value={autoLock}
+                  onChange={e => setAutoLock(e.target.value)}
+                >
+                  <option value="15m">15 minutes</option>
+                  <option value="30m">30 minutes</option>
+                  <option value="1h">1 hour</option>
+                  <option value="never">Never</option>
+                </select>
+              </div>
             </>
           )}
 
@@ -180,51 +194,48 @@ export default function AppSettingsModal({ isOpen, onClose }) {
             <>
               <div className="umm-toggle-row">
                 <div className="umm-toggle-info">
-                  <span className="umm-toggle-title">Export Forensic Audit Reports</span>
-                  <span className="umm-toggle-desc">Download complete session transcripts, frame markers, and cryptographic proofs in JSON.</span>
+                  <span className="umm-toggle-title">Export session data</span>
+                  <span className="umm-toggle-desc">Download your investigation history and analysis logs</span>
                 </div>
-                <button 
-                  type="button" 
-                  className="umm-btn-cancel" 
-                  onClick={() => alert("Audit log export started. File will download shortly.")}
+                <button
+                  type="button"
+                  className="umm-btn-cancel"
+                  onClick={() => alert("Export started.")}
                 >
-                  Export Log
+                  Export
                 </button>
               </div>
 
-              <div className="umm-toggle-row" style={{ borderColor: 'rgba(239, 68, 68, 0.3)' }}>
+              <div className="umm-toggle-row">
                 <div className="umm-toggle-info">
-                  <span className="umm-toggle-title" style={{ color: '#f87171' }}>Clear Audit Session History</span>
-                  <span className="umm-toggle-desc">Permanently purge local conversation cache and temporary analysis cards.</span>
+                  <span className="umm-toggle-title">Clear local cache</span>
+                  <span className="umm-toggle-desc">Remove locally cached sessions and temporary analysis data</span>
                 </div>
-                <button 
-                  type="button" 
-                  className="umm-btn-cancel" 
-                  style={{ color: '#f87171', borderColor: 'rgba(239, 68, 68, 0.4)' }}
+                <button
+                  type="button"
+                  className="umm-btn-cancel"
                   onClick={() => {
-                    if (confirm("Are you sure you want to clear your local session cache?")) {
-                      localStorage.removeItem('chorus_history');
-                      window.location.reload();
+                    if (window.confirm("Clear local cache?")) {
+                      alert("Cache cleared.");
                     }
                   }}
                 >
-                  Clear History
+                  Clear Cache
                 </button>
               </div>
             </>
           )}
-        </div>
 
-        <div className="umm-footer">
-          <button type="button" className="umm-btn-cancel" onClick={onClose}>Close</button>
-          <button type="button" className="umm-btn-primary" onClick={handleSave}>
-            {saved ? (
-              <>
-                <Check size={14} style={{ display: 'inline', marginRight: 4 }} /> Saved
-              </>
-            ) : 'Save Preferences'}
-          </button>
-        </div>
+          {/* Footer (No icons) */}
+          <div className="umm-footer" style={{ padding: '12px 0 0 0', border: 'none' }}>
+            <button type="button" className="umm-btn-cancel" onClick={onClose}>
+              Cancel
+            </button>
+            <button type="submit" className="umm-btn-primary">
+              {saved ? 'Saved' : 'Save'}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

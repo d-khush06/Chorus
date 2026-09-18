@@ -8,8 +8,17 @@ export default function LoginPage() {
   const { login, register, token, setTokenDirectly } = useContext(AuthContext);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  
-  const [isRegister, setIsRegister] = useState(false);
+  const modeParam = searchParams.get('mode');
+  const [isRegister, setIsRegister] = useState(() => modeParam === 'signup' || modeParam === 'register');
+
+  useEffect(() => {
+    const mode = searchParams.get('mode');
+    if (mode === 'signup' || mode === 'register') {
+      setIsRegister(true);
+    } else if (mode === 'login' || mode === 'signin') {
+      setIsRegister(false);
+    }
+  }, [searchParams]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
