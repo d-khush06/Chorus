@@ -1,0 +1,29 @@
+.cyber-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem 1.5rem;
+}
+
+.empty-state-icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 1.5rem;
+  color: var(--cyber-text-secondary);
+}
+
+.empty-state-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--cyber-text;
+}
+
+.empty-state-description {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--cyber-text-secondary);
+  max-width: 32rem;
+}

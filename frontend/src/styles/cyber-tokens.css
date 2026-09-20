@@ -1,0 +1,266 @@
+/* ============================================================
+   Chorus Design System — Universal Tokens
+   Warm, intellectual, document-focused aesthetic.
+   Tokens (use exactly; never #000000 or #FFFFFF anywhere):
+   LIGHT: bg #F5F3EE | surface #E8E3D2 | border #DCD7C6 | text #141413 | text-secondary #5E5D59 | accent #C15F3C
+   DARK:  bg #191816 | surface #1A1A18 | border #30302E | text #FAF9F5 | text-secondary #B0AEA5 | accent #D97757
+   Stage / Video / Evidence: #141413
+   ============================================================ */
+
+:root,
+[data-theme="light"] {
+  /* Core Theme Tokens */
+  --bg: #F5F3EE;
+  --surface: #E8E3D2;
+  --surface-alt: #E2DCC9;
+  --border: #DCD7C6;
+  --border-strong: #C8C2AF;
+  --text: #141413;
+  --text-secondary: #5E5D59;
+  --text-muted: #5E5D59;
+  --accent: #C15F3C;
+  --accent-hover: #AA5131;
+  --btn-label: #FAF9F5;
+
+  /* Backward-compatible aliases for cyber & general */
+  --cyber-bg: #F5F3EE;
+  --cyber-surface: #E8E3D2;
+  --cyber-border: #DCD7C6;
+  --cyber-text: #141413;
+  --cyber-text-secondary: #5E5D59;
+  --cyber-accent: #C15F3C;
+  --color-bg: #F5F3EE;
+  --color-surface: #E8E3D2;
+  --color-border: #DCD7C6;
+  --color-text: #141413;
+  --color-text-dim: #5E5D59;
+  --color-accent: #C15F3C;
+  --text-1: #141413;
+  --text-2: #5E5D59;
+  --text-3: #5E5D59;
+
+  /* Semantic status colors (muted, desaturated, paired with icons; danger visibly different from accent #C15F3C) */
+  --ok: #4A7C59;
+  --warning: #B8860B;
+  --danger: #992224;
+  --info: #3D6B99;
+  --cyber-ok: #4A7C59;
+  --cyber-warning: #B8860B;
+  --cyber-danger: #992224;
+  --cyber-info: #3D6B99;
+
+  /* Video/evidence stage background */
+  --stage-bg: #141413;
+  --cyber-stage-bg: #141413;
+
+  /* Typography */
+  --font-heading: 'Source Serif 4', Georgia, serif;
+  --font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --cyber-font-heading: 'Source Serif 4', Georgia, serif;
+  --cyber-font-ui: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --cyber-font-mono: 'JetBrains Mono', monospace;
+
+  /* Spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  /* Radii */
+  --radius-card: 10px;
+  --radius-control: 6px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-small: 4px;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-mid: 200ms ease;
+
+  /* Focus ring */
+  --focus-ring: 0 0 0 2px var(--accent);
+  --cyber-focus-ring: 0 0 0 2px var(--accent);
+
+  /* Shadows */
+  --shadow: rgba(20, 20, 19, 0.08);
+  --shadow-elevated: rgba(20, 20, 19, 0.12);
+  --cyber-shadow: rgba(20, 20, 19, 0.08);
+  --cyber-shadow-elevated: rgba(20, 20, 19, 0.12);
+
+  /* LIVE pulse */
+  --live-pulse: pulse 1.5s ease-in-out infinite;
+  --cyber-live-pulse: pulse 1.5s ease-in-out infinite;
+}
+
+[data-theme="dark"] {
+  /* Core Theme Tokens */
+  --bg: #191816;
+  --surface: #1A1A18;
+  --surface-alt: #222220;
+  --border: #30302E;
+  --border-strong: #42423E;
+  --text: #FAF9F5;
+  --text-secondary: #B0AEA5;
+  --text-muted: #B0AEA5;
+  --accent: #D97757;
+  --accent-hover: #E2886A;
+  --btn-label: #191816;
+
+  /* Backward-compatible aliases for cyber & general */
+  --cyber-bg: #191816;
+  --cyber-surface: #1A1A18;
+  --cyber-border: #30302E;
+  --cyber-text: #FAF9F5;
+  --cyber-text-secondary: #B0AEA5;
+  --cyber-accent: #D97757;
+  --color-bg: #191816;
+  --color-surface: #1A1A18;
+  --color-border: #30302E;
+  --color-text: #FAF9F5;
+  --color-text-dim: #B0AEA5;
+  --color-accent: #D97757;
+  --text-1: #FAF9F5;
+  --text-2: #B0AEA5;
+  --text-3: #B0AEA5;
+
+  /* Semantic status colors (danger visibly different from accent #D97757) */
+  --ok: #5E9E6F;
+  --warning: #C79836;
+  --danger: #B8474B;
+  --info: #5B8AC0;
+  --cyber-ok: #5E9E6F;
+  --cyber-warning: #C79836;
+  --cyber-danger: #B8474B;
+  --cyber-info: #5B8AC0;
+
+  /* Video/evidence stage background */
+  --stage-bg: #141413;
+  --cyber-stage-bg: #141413;
+
+  /* Shadows */
+  --shadow: rgba(0, 0, 0, 0.3);
+  --shadow-elevated: rgba(0, 0, 0, 0.4);
+  --cyber-shadow: rgba(0, 0, 0, 0.3);
+  --cyber-shadow-elevated: rgba(0, 0, 0, 0.4);
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Base global layout classes */
+.cyber-console {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  line-height: 1.65;
+  min-height: 100vh;
+}
+
+.cyber-console .font-heading {
+  font-family: var(--font-heading);
+}
+
+.cyber-console .font-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Common text utilities */
+.cyber-console .text-xs { font-size: 0.75rem; line-height: 1.5; }
+.cyber-console .text-sm { font-size: 0.875rem; line-height: 1.6; }
+.cyber-console .text-base { font-size: 1rem; line-height: 1.65; }
+.cyber-console .text-lg { font-size: 1.125rem; line-height: 1.6; }
+.cyber-console .text-xl { font-size: 1.25rem; line-height: 1.55; }
+.cyber-console .text-2xl { font-size: 1.5rem; line-height: 1.4; }
+.cyber-console .text-3xl { font-size: 1.875rem; line-height: 1.3; }
+.cyber-console .text-4xl { font-size: 2.25rem; line-height: 1.2; }
+
+/* Colors */
+.cyber-console .text-primary { color: var(--text); }
+.cyber-console .text-secondary { color: var(--text-secondary); }
+.cyber-console .text-accent { color: var(--accent); }
+.cyber-console .text-ok { color: var(--ok); }
+.cyber-console .text-warning { color: var(--warning); }
+.cyber-console .text-danger { color: var(--danger); }
+.cyber-console .text-info { color: var(--info); }
+
+.cyber-console .bg-surface { background-color: var(--surface); }
+.cyber-console .bg-stage { background-color: var(--stage-bg); }
+.cyber-console .border-default { border-color: var(--border); }
+
+/* Focus visible */
+.cyber-console :focus-visible,
+button:focus-visible,
+input:focus-visible,
+a:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent);
+  border-radius: var(--radius-control);
+}
+
+/* Accessibility skip link */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  background: var(--accent);
+  color: var(--btn-label);
+  font-weight: 600;
+  border-radius: var(--radius-control);
+  z-index: 10000;
+  transition: top var(--transition-fast);
+}
+
+.skip-link:focus {
+  top: var(--space-4);
+}
+
+/* Animations */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.animate-pulse-slow {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Flat solid skeleton background without gradients */
+.animate-shimmer {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* Custom minimal scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}

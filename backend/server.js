@@ -32,6 +32,12 @@ app.use(passport.session());
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/cases', require('./routes/cases'));
 app.use('/api/analyze', require('./routes/analyze'));
+app.use('/api/videos', require('./routes/stream'));
+app.use('/api/cyber', require('./routes/cyber'));
+app.use('/api/review-queue', (req, res, next) => {
+  req.url = '/review-queue' + (req.url === '/' ? '' : req.url);
+  require('./routes/cyber')(req, res, next);
+});
 
 // Root route
 app.get('/', (req, res) => {

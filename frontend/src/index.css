@@ -1,104 +1,22 @@
+@import './styles/cyber-tokens.css';
+@import './styles/design-tokens.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* ============================================================
-   Chorus — Evidence Room
-   Design tokens + global baseline
+   Chorus — Universal Application Styles
+   Token-driven baseline, Light & Dark mode support.
    ============================================================ */
 
-/* --- Google Fonts are imported via <link> in index.html --- */
-
-/* --- CSS Custom Properties (Design Tokens) --- */
-:root {
-  /* Surfaces — Pure Pitch-Black OLED Dark Palette */
-  --bg: #000000;
-  --surface: #080808;
-  --surface-alt: #121212;
-  --surface-glass: rgba(255, 255, 255, 0.03);
-  --surface-glass-alt: rgba(255, 255, 255, 0.05);
-  --border: rgba(255, 255, 255, 0.08);
-
-  /* Text */
-  --text-1: #FFFFFF;
-  --text-2: #A1A1AA;
-  --text-3: #71717A;
-
-  /* Functional colors */
-  --amber: #F59E0B;
-  --green: #10B981;
-  --red: #EF4444;
-
-  /* Typography */
-  --mono-font: 'JetBrains Mono', monospace;
-  --sans-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-
-  /* Spacing scale */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-8: 32px;
-  --space-10: 40px;
-
-  /* Radii */
-  --radius-sm: 3px;
-  --radius-md: 6px;
-  --radius-lg: 10px;
-
-  /* Sidebar widths */
-  --sidebar-left-width: 280px;
-  --sidebar-right-width: 320px;
-
-  /* Transitions — only on real state changes */
-  --transition-fast: 150ms ease;
-  --transition-mid: 200ms ease;
-}
-
-/* --- Global Reset --- */
+/* Global Reset */
 *,
 *::before,
 *::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-}
-
-.global-app-container {
-  min-height: 100vh;
-  width: 100vw;
-  background-color: var(--bg);
-  color: var(--text-1);
-  position: relative;
-  overflow-y: auto;
-  overflow-x: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Global Background Ambient Orbs */
-.global-bg-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(100px);
-  z-index: 0;
-  opacity: 0.5;
-  pointer-events: none;
-}
-
-.orb-1 {
-  top: -10%;
-  left: 50%;
-  width: 600px;
-  height: 600px;
-  background: rgba(37, 99, 235, 0.15); /* Blue */
-  transform: translateX(-50%);
-}
-
-.orb-2 {
-  bottom: 10%;
-  right: -10%;
-  width: 500px;
-  height: 500px;
-  background: rgba(239, 68, 68, 0.1); /* Cyber Red */
 }
 
 html {
@@ -110,11 +28,11 @@ html {
 
 body {
   height: 100%;
-  background: var(--bg);
-  color: var(--text-1);
-  font-family: var(--sans-font);
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
   font-weight: 400;
-  line-height: 1.5;
+  line-height: 1.65;
   overflow-y: auto;
   overflow-x: hidden;
 }
@@ -123,28 +41,40 @@ body {
   height: 100%;
 }
 
-/* --- Typography utilities --- */
+.global-app-container {
+  min-height: 100vh;
+  width: 100vw;
+  background-color: var(--bg);
+  color: var(--text);
+  position: relative;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Typography utilities */
 .mono {
-  font-family: var(--mono-font);
+  font-family: var(--font-mono);
 }
 
 .sans {
-  font-family: var(--sans-font);
+  font-family: var(--font-ui);
 }
 
 .text-1 {
-  color: var(--text-1);
+  color: var(--text);
 }
 
 .text-2 {
-  color: var(--text-2);
+  color: var(--text-secondary);
 }
 
 .text-3 {
-  color: var(--text-3);
+  color: var(--text-secondary);
 }
 
-/* --- Scrollbars (webkit) --- */
+/* Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -160,27 +90,25 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-3);
+  background: var(--text-secondary);
 }
 
-/* --- App Shell Layout --- */
+/* App Shell Layout */
 .app-shell {
   display: grid;
-  grid-template-columns: var(--sidebar-left-width) 1fr var(--sidebar-right-width);
+  grid-template-columns: 280px 1fr 320px;
   grid-template-rows: 100vh;
   grid-template-areas: "left main right";
   height: 100vh;
   overflow: hidden;
 }
 
-/* Left collapsed — icon strip at 56px */
 .app-shell.left-collapsed {
-  grid-template-columns: 56px 1fr var(--sidebar-right-width);
+  grid-template-columns: 56px 1fr 320px;
 }
 
-/* Right panel as drawer (below 1200px) */
 .app-shell.right-drawer {
-  grid-template-columns: var(--sidebar-left-width) 1fr;
+  grid-template-columns: 280px 1fr;
   grid-template-areas: "left main";
 }
 
@@ -188,7 +116,7 @@ body {
   grid-template-columns: 56px 1fr;
 }
 
-/* --- App Header Bar --- */
+/* App Header Bar */
 .app-header {
   grid-area: left / left / left / right;
   display: flex;
@@ -205,7 +133,7 @@ body {
   z-index: 100;
 }
 
-/* --- Responsive: right drawer button --- */
+/* Responsive right drawer */
 .drawer-toggle-btn {
   position: fixed;
   bottom: var(--space-5);
@@ -217,25 +145,24 @@ body {
   padding: var(--space-2) var(--space-4);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  color: var(--text-2);
-  font-family: var(--sans-font);
+  border-radius: var(--radius-control);
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
   font-size: 12px;
   cursor: pointer;
   transition: color var(--transition-fast), border-color var(--transition-fast);
 }
 
 .drawer-toggle-btn:hover {
-  color: var(--text-1);
-  border-color: var(--text-3);
+  color: var(--text);
+  border-color: var(--border-strong);
 }
 
-/* --- Right Drawer Overlay --- */
 .right-drawer-overlay {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(11, 13, 16, 0.6);
+  background: rgba(20, 20, 19, 0.6);
   z-index: 150;
   transition: opacity var(--transition-mid);
 }
@@ -244,7 +171,7 @@ body {
   position: fixed;
   top: 0;
   right: 0;
-  width: var(--sidebar-right-width);
+  width: 320px;
   height: 100vh;
   background: var(--surface);
   border-left: 1px solid var(--border);
@@ -258,10 +185,9 @@ body {
   transform: translateX(0);
 }
 
-/* --- Responsive breakpoints --- */
 @media (max-width: 1200px) {
   .app-shell {
-    grid-template-columns: var(--sidebar-left-width) 1fr;
+    grid-template-columns: 280px 1fr;
     grid-template-areas: "left main";
   }
 
@@ -294,7 +220,6 @@ body {
   }
 }
 
-/* --- Utility: truncate with tooltip --- */
 .truncate {
   white-space: nowrap;
   overflow: hidden;
@@ -302,7 +227,6 @@ body {
   max-width: 100%;
 }
 
-/* --- Utility: visually-hidden (for screen readers) --- */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -315,9 +239,8 @@ body {
   border: 0;
 }
 
-/* --- Focus visible ring --- */
 :focus-visible {
-  outline: 2px solid var(--text-3);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 

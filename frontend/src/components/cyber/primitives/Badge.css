@@ -1,0 +1,43 @@
+.cyber-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Variants */
+.cyber-badge-secondary {
+  background: var(--cyber-surface);
+  color: var(--cyber-text);
+  border: 1px solid var(--cyber-border);
+}
+
+.cyber-badge-accent {
+  background: var(--cyber-accent);
+  color: var(--cyber-text);
+}
+
+.cyber-badge-ok {
+  background: var(--cyber-ok);
+  color: var(--cyber-text);
+}
+
+.cyber-badge-warning {
+  background: var(--cyber-warning);
+  color: var(--cyber-text);
+}
+
+.cyber-badge-danger {
+  background: var(--cyber-danger);
+  color: var(--cyber-text);
+}
+
+.cyber-badge-info {
+  background: var(--cyber-info);
+  color: var(--cyber-text);
+}

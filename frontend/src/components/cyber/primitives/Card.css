@@ -1,0 +1,45 @@
+.cyber-card {
+  border: 1px solid var(--cyber-border);
+  border-radius: 12px;
+  background: var(--cyber-surface);
+  color: var(--cyber-text);
+  overflow: hidden;
+}
+
+/* Skeleton loader */
+.cyber-skeleton-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  color: var(--cyber-text-secondary);
+  font-style: italic;
+}
+
+/* Empty state */
+.cyber-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  color: var(--cyber-text-secondary);
+}
+
+/* Error state */
+.cyber-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  color: var(--cyber-danger);
+  background-color: rgba(var(--cyber-danger-rgb, 166, 61, 64), 0.1);
+  border: 1px solid var(--cyber-danger);
+  border-radius: 8px;
+  margin: 1rem;
+}

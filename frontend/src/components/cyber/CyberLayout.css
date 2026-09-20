@@ -1,0 +1,64 @@
+.cyber-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: var(--cyber-bg);
+  color: var(--cyber-text);
+}
+
+.cyber-layout__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--cyber-border);
+  background: var(--cyber-surface);
+}
+
+.cyber-layout__back-link {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--cyber-text);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.cyber-layout__back-link:hover {
+  text-decoration: underline;
+}
+
+.cyber-layout__header .cyber-tabs {
+  flex: 1;
+  margin: 0 1.5rem;
+  max-width: 600px;
+}
+
+.cyber-layout__actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.cyber-layout__theme-toggle {
+  background: transparent;
+  border: none;
+  color: var(--cyber-text);
+  cursor: pointer;
+  font-size: 1.25rem;
+  padding: 0.25rem;
+}
+
+.cyber-layout__theme-toggle:hover {
+  color: var(--cyber-accent);
+}
+
+.cyber-layout__status-pill {
+  font-size: 0.875rem;
+}
+
+.cyber-layout__content {
+  flex: 1;
+  padding: 2rem;
+}

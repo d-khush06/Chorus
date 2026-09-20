@@ -19,7 +19,9 @@ import ConflictCard from './components/ConflictCard.jsx';
 import AnalyticsPage from './pages/AnalyticsPage.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import HomePage from './pages/HomePage.jsx';
+import { CyberLayout, CyberLandingPage, LiveWatchPage, ForensicPage, TracePage } from './components/cyber';
 import './App.css';
+import './styles/cyber-tokens.css';
 
 // Private Route Wrapper
 const PrivateRoute = ({ children }) => {
@@ -293,10 +295,6 @@ export default function App() {
   const navigate = useNavigate();
   return (
     <div className="global-app-container">
-      {/* Global Background Ambient Orbs */}
-      <div className="global-bg-orb orb-1"></div>
-      <div className="global-bg-orb orb-2"></div>
-      
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/auth/callback" element={<LoginPage />} />
@@ -310,6 +308,16 @@ export default function App() {
             <EvidenceRoom />
           </PrivateRoute>
         } />
+        <Route path="/cyber" element={
+          <PrivateRoute>
+            <CyberLayout />
+          </PrivateRoute>
+        }>
+          <Route index element={<CyberLandingPage />} />
+          <Route path="live" element={<LiveWatchPage />} />
+          <Route path="forensic" element={<ForensicPage />} />
+          <Route path="trace" element={<TracePage />} />
+        </Route>
         <Route path="/" element={<HomePage />} />
       </Routes>
     </div>

@@ -14,7 +14,7 @@ import {
   ChevronDown, ChevronRight, Check, Copy, ThumbsUp, ThumbsDown, RotateCcw,
   ArrowUp, Clock, AlertTriangle, ShieldCheck, Zap, Sliders,
   CircleUser, HelpCircle, LogOut, Pin, Trash2, UploadCloud, Activity,
-  Play, Pause, ExternalLink, Video, Cctv, PlayCircle, MoreHorizontal
+  Play, Pause, ExternalLink, Video, Cctv, PlayCircle, MoreHorizontal, Globe
 } from 'lucide-react';
 
 const INITIAL_HISTORY = [
@@ -278,6 +278,10 @@ function ChatInput({
   setPromptText,
   attachedFile,
   setAttachedFile,
+  attachedLiveStream,
+  setAttachedLiveStream,
+  activeStreamConfig,
+  setActiveStreamConfig,
   activeMode,
   selectedModel,
   switchModel,
@@ -288,8 +292,34 @@ function ChatInput({
   handleSend,
   fileInputRef,
   textareaRef,
-  modelDropdownRef
+  modelDropdownRef,
+  onOpenRtspModal
 }) {
+  const [attachMenuOpen, setAttachMenuOpen] = useState(false);
+  const attachMenuRef = useRef(null);
+
+  // Close attach menu when clicking outside or pressing Escape
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (attachMenuRef.current && !attachMenuRef.current.contains(e.target)) {
+        setAttachMenuOpen(false);
+      }
+    }
+    function handleKeyDown(e) {
+      if (e.key === 'Escape') {
+        setAttachMenuOpen(false);
+      }
+    }
+    if (attachMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [attachMenuOpen]);
+
   return (
     <div className={`cpt-input-container ${centered ? 'cpt-input-centered' : ''}`}>
       {/* Command Palette Popup */}
@@ -320,17 +350,45 @@ function ChatInput({
       )}
 
       <div className={`cpt-input-wrapper ${activeMode === 'cyber' ? 'cyber-border' : ''}`}>
+        {/* Attached local file chip */}
         {attachedFile && (
           <div className="cpt-file-chip">
             <Film size={13} className="cpt-file-icon" />
             <span className="cpt-file-name">{attachedFile.name}</span>
-            <button className="cpt-file-chip__remove" onClick={() => setAttachedFile(null)}>
+            <button
+              type="button"
+              className="cpt-file-chip__remove"
+              onClick={() => setAttachedFile(null)}
+              title="Remove attached file"
+            >
+              <X size={12} />
+            </button>
+          </div>
+        )}
+
+        {/* Attached live RTSP stream chip (Cyber mode only) */}
+        {activeMode === 'cyber' && attachedLiveStream && (
+          <div className="cpt-file-chip live-chip">
+            <Cctv size={13} className="cpt-file-icon" />
+            <span className="cpt-file-name">
+              {activeStreamConfig?.cameraLabel ? `${activeStreamConfig.cameraLabel} (${attachedLiveStream})` : attachedLiveStream}
+            </span>
+            <button
+              type="button"
+              className="cpt-file-chip__remove"
+              onClick={() => {
+                if (setAttachedLiveStream) setAttachedLiveStream(null);
+                if (setActiveStreamConfig) setActiveStreamConfig(null);
+              }}
+              title="Disconnect live stream"
+            >
               <X size={12} />
             </button>
           </div>
         )}
 
         <div className="cpt-input-box">
+          {/* Hidden native file input for local uploads */}
           <input
             ref={fileInputRef}
             type="file"
@@ -339,21 +397,178 @@ function ChatInput({
             onChange={(e) => {
               const f = e.target.files[0];
               if (f) setAttachedFile(f);
+              setAttachMenuOpen(false);
             }}
           />
-          <button
-            className="cpt-icon-btn cpt-attach-btn"
-            onClick={() => fileInputRef.current?.click()}
-            title="Attach video file"
-          >
-            <Plus size={18} />
-          </button>
+
+          {/* Plus / Attach Button with dedicated wrapper for dropdown */}
+          <div className="cpt-attach-wrapper" ref={attachMenuRef}>
+            <button
+              type="button"
+              className={`cpt-icon-btn cpt-attach-btn ${attachMenuOpen ? 'open' : ''}`}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setAttachMenuOpen(prev => !prev);
+              }}
+              title={activeMode === 'cyber' ? "Add media source or live RTSP stream" : "Add media source or video link"}
+              aria-label="Add media source"
+              aria-expanded={attachMenuOpen}
+            >
+              <Plus size={18} className="cpt-attach-plus-icon" />
+            </button>
+
+            {/* Multi-Source Attachment Popover Menu */}
+            {attachMenuOpen && (
+              <div className="cpt-attach-menu" onClick={(e) => e.stopPropagation()}>
+                <div className="cpt-attach-menu-header">
+                  <span>Add Media & Sources</span>
+                </div>
+
+                {/* 1. Local Computer Upload */}
+                <button
+                  type="button"
+                  className="cpt-attach-menu-item"
+                  onClick={() => {
+                    setAttachMenuOpen(false);
+                    fileInputRef.current?.click();
+                  }}
+                >
+                  <div className="cpt-attach-icon-wrap local">
+                    <UploadCloud size={18} />
+                  </div>
+                  <div className="cpt-attach-item-text">
+                    <span className="cpt-attach-item-title">Upload from Computer</span>
+                    <span className="cpt-attach-item-desc">MP4, MOV, AVI, WEBM, MKV, TS, WAV, MP3</span>
+                  </div>
+                </button>
+
+                {/* 2. Live RTSP Surveillance Stream (Cyber Mode Only) */}
+                {activeMode === 'cyber' && (
+                  <button
+                    type="button"
+                    className="cpt-attach-menu-item"
+                    onClick={() => {
+                      setAttachMenuOpen(false);
+                      if (onOpenRtspModal) onOpenRtspModal();
+                    }}
+                  >
+                    <div className="cpt-attach-icon-wrap rtsp">
+                      <Cctv size={18} />
+                    </div>
+                    <div className="cpt-attach-item-text">
+                      <span className="cpt-attach-item-title">Connect Live RTSP Stream</span>
+                      <span className="cpt-attach-item-desc">Real-time IP camera or NVR surveillance feed</span>
+                    </div>
+                  </button>
+                )}
+
+                {/* 3. YouTube Video Link */}
+                <button
+                  type="button"
+                  className="cpt-attach-menu-item"
+                  onClick={() => {
+                    setAttachMenuOpen(false);
+                    if (!promptText.includes('youtube.com') && !promptText.includes('youtu.be')) {
+                      setPromptText(prev => prev ? `https://youtube.com/watch?v= ${prev}` : 'https://youtube.com/watch?v= ');
+                    }
+                    setTimeout(() => {
+                      if (textareaRef.current) {
+                        textareaRef.current.focus();
+                        const len = textareaRef.current.value.length;
+                        textareaRef.current.setSelectionRange(len, len);
+                      }
+                    }, 50);
+                  }}
+                >
+                  <div className="cpt-attach-icon-wrap youtube">
+                    <PlayCircle size={18} />
+                  </div>
+                  <div className="cpt-attach-item-text">
+                    <span className="cpt-attach-item-title">YouTube Video Link</span>
+                    <span className="cpt-attach-item-desc">Multimodal Q&A, transcript extraction & chapters</span>
+                  </div>
+                </button>
+
+                {/* 4. Direct Web Video / Stream URL */}
+                <button
+                  type="button"
+                  className="cpt-attach-menu-item"
+                  onClick={() => {
+                    setAttachMenuOpen(false);
+                    if (!promptText.startsWith('http')) {
+                      setPromptText(prev => prev ? `https:// ${prev}` : 'https://');
+                    }
+                    setTimeout(() => {
+                      if (textareaRef.current) {
+                        textareaRef.current.focus();
+                        const len = textareaRef.current.value.length;
+                        textareaRef.current.setSelectionRange(len, len);
+                      }
+                    }, 50);
+                  }}
+                >
+                  <div className="cpt-attach-icon-wrap weblink">
+                    <Globe size={18} />
+                  </div>
+                  <div className="cpt-attach-item-text">
+                    <span className="cpt-attach-item-title">Web Video / Stream URL</span>
+                    <span className="cpt-attach-item-desc">Direct MP4, HLS (.m3u8), or cloud video URL</span>
+                  </div>
+                </button>
+
+                <div className="cpt-attach-menu-divider" />
+
+                {/* 5. Pre-loaded Sample Case */}
+                <button
+                  type="button"
+                  className="cpt-attach-menu-item"
+                  onClick={() => {
+                    setAttachMenuOpen(false);
+                    const sampleText = activeMode === 'cyber'
+                      ? "Audit CCTV_Perimeter_Sector4.mp4 for video manipulation, frame splices, and timestamp alteration."
+                      : "https://youtube.com/watch?v=k3_X_09B7mU Summarize this video into chapters and actionable takeaways.";
+                    setPromptText(sampleText);
+                    setTimeout(() => {
+                      if (textareaRef.current) {
+                        textareaRef.current.focus();
+                      }
+                    }, 50);
+                  }}
+                >
+                  <div className="cpt-attach-icon-wrap sample">
+                    <Film size={18} />
+                  </div>
+                  <div className="cpt-attach-item-text">
+                    <span className="cpt-attach-item-title">
+                      {activeMode === 'cyber' ? 'Sample Perimeter Security Audit' : 'Sample Video Intelligence Prompt'}
+                    </span>
+                    <span className="cpt-attach-item-desc">Instant pre-configured test demonstration</span>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Direct RTSP shortcut button in cyber mode */}
+          {activeMode === 'cyber' && (
+            <button
+              type="button"
+              className={`cpt-icon-btn cpt-rtsp-btn ${attachedLiveStream ? 'active' : ''}`}
+              onClick={() => {
+                if (onOpenRtspModal) onOpenRtspModal();
+              }}
+              title="Connect Real RTSP Stream (rtsp://...)"
+            >
+              <Cctv size={17} />
+            </button>
+          )}
 
           <textarea
             ref={textareaRef}
             className="cpt-textarea"
             placeholder={activeMode === 'cyber'
-              ? "Audit video for deepfakes, frame splices, or tamper analysis..."
+              ? "Audit video for deepfakes, frame splices, or paste video/RTSP URL..."
               : "Ask video questions, summarize chapters, or paste video URL..."
             }
             value={promptText}
@@ -416,8 +631,9 @@ function ChatInput({
               )}
             </div>
 
-            {promptText.trim().length > 0 || attachedFile ? (
+            {promptText.trim().length > 0 || attachedFile || attachedLiveStream ? (
               <button
+                type="button"
                 className={`cpt-send-btn ${activeMode === 'cyber' ? 'cyber-send' : ''}`}
                 onClick={() => handleSend()}
                 title="Send"
@@ -426,6 +642,7 @@ function ChatInput({
               </button>
             ) : (
               <button
+                type="button"
                 className={`cpt-icon-btn cpt-voice-btn ${activeMode === 'cyber' ? 'cyber-voice' : ''} ${isVoiceActive ? 'pulsing' : ''}`}
                 onClick={() => setIsVoiceActive(!isVoiceActive)}
                 title="Voice Mode"
@@ -1047,7 +1264,9 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
             overview: activeSession.summary?.overview,
             title: activeSession.title,
             transcript: activeSession.summary?.asr_transcript,
-            scenes: activeSession.summary?.scenes
+            scenes: activeSession.summary?.scenes,
+            vl_output: activeSession.summary?.vl_output,
+            detailed_analysis: activeSession.summary?.detailed_analysis
           },
           model: effectiveModel,
           caseId: activeSession.caseId
@@ -1060,28 +1279,12 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
       }
 
       if (!replyText) {
-        const qLower = actualPrompt.toLowerCase();
-        const asksObjects = /object|desk|computer|monitor|screen|chair|table|room|setup|equipment|keyboard|window|cabinet/i.test(qLower);
-        const asksPerson = /man|person|guy|action|do|doing|walk|enter|exit|wear|cloth|pant|shirt|movement|hand/i.test(qLower);
-        const asksAudio = /say|said|speak|audio|transcript|hear|dialogue|voice|word|sound/i.test(qLower);
-        const asksElaborate = /elaborate|detail|more|explain|breakdown|deep|tell me about|what else|deepthink/i.test(qLower);
-
-        const sections = [];
-        if (asksObjects || asksElaborate) {
-          sections.push(`• **Desk Setup & Workstations**:\nEach desk is equipped with a desktop computer monitor, a keyboard, and an optical mouse. Blue swivel chairs on casters are positioned at each workstation. In the background, large glass window panels let in natural light, and a server rack cabinet stands near the corner.`);
-        }
-        if (asksPerson || asksElaborate) {
-          sections.push(`• **The Man's Actions & Movement**:\nThe man wears a black short-sleeved shirt and light-colored (khaki/tan) pants. He enters the room, walks down the aisle between the rows of desks, glances down at one of the computer workstations, pauses briefly, and then turns and exits through the door on the right.`);
-        }
-        if (asksAudio && activeSession.summary?.asr_transcript) {
-          sections.push(`• **Spoken Dialogue**:\nThe speaker in the video states: "${activeSession.summary.asr_transcript}".`);
-        }
-
-        if (sections.length > 0) {
-          replyText = sections.join('\n\n');
+        const overview = activeSession.summary?.overview || '';
+        const transcript = activeSession.summary?.asr_transcript || '';
+        if (overview) {
+          replyText = overview + (transcript ? `\n\nSpoken Dialogue: "${transcript}"` : '');
         } else {
-          replyText = `Based on the visual observations of the video:\n\n` +
-            `A man in a black shirt and light-colored pants enters a room filled with desk workstations equipped with monitors, keyboards, and blue chairs. He walks across the aisle, pauses to look at one of the desks, and exits through the door on the right side of the frame.`;
+          replyText = `Based on the video analysis, the models identified the primary visual events and speech. Ask about the actions, setting, or spoken words for more details.`;
         }
       }
     }
@@ -1129,178 +1332,7 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
     ? userName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
     : userName.charAt(0).toUpperCase() + userName.slice(1);
 
-  // Chat Input Component
-  const ChatInput = ({ centered }) => (
-    <div className={`cpt-input-container ${centered ? 'cpt-input-centered' : ''}`}>
-      {/* Command Palette Popup */}
-      {promptText.startsWith('/') && (
-        <div className="cpt-command-popup">
-          <div 
-            className="cpt-command-popup-item"
-            onClick={() => {
-              switchModel('flash', true);
-              setPromptText('');
-            }}
-          >
-            <span className="cpt-command-popup-cmd">/flash</span>
-            <span className="cpt-command-popup-desc">Chorus Flash</span>
-          </div>
 
-          <div 
-            className="cpt-command-popup-item"
-            onClick={() => {
-              switchModel('deepthink', true);
-              setPromptText('');
-            }}
-          >
-            <span className="cpt-command-popup-cmd">/deepthink</span>
-            <span className="cpt-command-popup-desc">Chorus Deepthink</span>
-          </div>
-        </div>
-      )}
-
-      <div className={`cpt-input-wrapper ${activeMode === 'cyber' ? 'cyber-border' : ''}`}>
-        {attachedFile && (
-          <div className="cpt-file-chip">
-            <Video size={13} className="cpt-file-icon" />
-            <span className="cpt-file-name">{attachedFile.name}</span>
-            <button className="cpt-file-chip__remove" onClick={() => setAttachedFile(null)}>
-              <X size={12} />
-            </button>
-          </div>
-        )}
-
-        {attachedLiveStream && (
-          <div className="cpt-file-chip live-chip">
-            <Cctv size={13} className="cpt-file-icon" />
-            <span className="cpt-file-name">
-              {activeStreamConfig?.cameraLabel ? `${activeStreamConfig.cameraLabel} (${attachedLiveStream})` : attachedLiveStream}
-            </span>
-            <button className="cpt-file-chip__remove" onClick={() => {
-              setAttachedLiveStream(null);
-              setActiveStreamConfig(null);
-            }}>
-              <X size={12} />
-            </button>
-          </div>
-        )}
-
-        <div className="cpt-input-box">
-          <input
-            ref={fileInputRef}
-            type="file"
-            className="sr-only"
-            accept=".mp4,.mov,.avi,.webm,.mkv,.ts,.wav,.mp3"
-            onChange={(e) => {
-              const f = e.target.files[0];
-              if (f) setAttachedFile(f);
-            }}
-          />
-          <button
-            className="cpt-icon-btn cpt-attach-btn"
-            onClick={() => fileInputRef.current?.click()}
-            title="Attach video file"
-          >
-            <Plus size={18} />
-          </button>
-
-          {activeMode === 'cyber' && (
-            <button
-              className={`cpt-icon-btn cpt-rtsp-btn ${attachedLiveStream ? 'active' : ''}`}
-              onClick={() => setShowRtspModal(true)}
-              title="Connect Real RTSP Stream (rtsp://...)"
-            >
-              <Cctv size={17} />
-            </button>
-          )}
-
-          <textarea
-            ref={textareaRef}
-            className="cpt-textarea"
-            placeholder={activeMode === 'cyber'
-              ? "Audit video, paste video link, or connect live RTSP stream (rtsp://)..."
-              : "Ask video questions, summarize chapters, or paste YouTube link..."
-            }
-            value={promptText}
-            onChange={(e) => setPromptText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            rows={1}
-          />
-
-          <div className="cpt-input-actions-right">
-            {/* Gemini-style Model Selector Pill inside Input */}
-            <div className="cpt-gemini-pill-wrapper" ref={modelDropdownRef}>
-              <button
-                type="button"
-                className="cpt-gemini-pill-btn"
-                onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
-                title="Select model"
-              >
-                <span>{selectedModel === 'deepthink' ? 'Deepthink' : 'Flash'}</span>
-                <ChevronDown size={14} className={`cpt-gemini-pill-caret ${modelDropdownOpen ? 'open' : ''}`} />
-              </button>
-
-              {modelDropdownOpen && (
-                <div className={`cpt-gemini-dropdown ${centered ? 'dropdown-down' : 'dropdown-up'}`}>
-                  <div 
-                    className={`cpt-gemini-option ${selectedModel === 'flash' ? 'active' : ''}`}
-                    onClick={() => switchModel('flash')}
-                  >
-                    <div className="cpt-gemini-check-col">
-                      {selectedModel === 'flash' && <Check size={14} />}
-                    </div>
-                    <div className="cpt-gemini-option-text">
-                      <div className="cpt-gemini-option-title">Chorus Flash</div>
-                      <div className="cpt-gemini-option-sub">Fastest answers</div>
-                    </div>
-                  </div>
-
-                  <div 
-                    className={`cpt-gemini-option ${selectedModel === 'deepthink' ? 'active' : ''}`}
-                    onClick={() => switchModel('deepthink')}
-                  >
-                    <div className="cpt-gemini-check-col">
-                      {selectedModel === 'deepthink' && <Check size={14} />}
-                    </div>
-                    <div className="cpt-gemini-option-text">
-                      <div className="cpt-gemini-option-title">Chorus Deepthink</div>
-                      <div className="cpt-gemini-option-sub">Advanced reasoning</div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {promptText.trim().length > 0 || attachedFile || attachedLiveStream ? (
-              <button
-                className={`cpt-send-btn ${activeMode === 'cyber' ? 'cyber-send' : ''}`}
-                onClick={() => handleSend()}
-                title="Send"
-              >
-                <ArrowUp size={18} />
-              </button>
-            ) : (
-              <button
-                className={`cpt-icon-btn cpt-voice-btn ${activeMode === 'cyber' ? 'cyber-voice' : ''} ${isVoiceActive ? 'pulsing' : ''}`}
-                onClick={() => setIsVoiceActive(!isVoiceActive)}
-                title="Voice Mode"
-              >
-                <Mic size={18} />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-      <div className="cpt-disclaimer">
-        Chorus AI can make mistakes. Verify critical evidence.
-      </div>
-    </div>
-  );
 
   return (
     <div className={`cpt-app ${activeMode === 'cyber' ? 'mode-cyber' : 'mode-general'}`}>
@@ -1644,86 +1676,69 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
           {/* EMPTY STATE */}
           {!activeSession && (
             <div className="cpt-empty-state">
-              <h1 className="cpt-greeting">
-                {activeMode === 'cyber' ? 'Chorus Cyber Forensics' : `What's next, ${userFirstName}?`}
-              </h1>
-              <p className="cpt-sub-greeting">
-                {activeMode === 'cyber' 
-                  ? 'Tamper Detection, Deepfake Screening & Live Stream Auditing'
-                  : 'Video Analytics, Chapter Summarization & Multimodal Intelligence'
-                }
-              </p>
+              <div className="cpt-empty-hero">
+                <h1 className="cpt-greeting">
+                  {activeMode === 'cyber' ? 'Chorus Cyber Forensics' : `What's next, ${userFirstName}?`}
+                </h1>
+                <p className="cpt-sub-greeting">
+                  {activeMode === 'cyber' 
+                    ? 'Tamper Detection, Deepfake Screening & Live Stream Auditing'
+                    : 'Video Analytics, Chapter Summarization & Multimodal Intelligence'
+                  }
+                </p>
 
-              <ChatInput
-                centered={true}
-                promptText={promptText}
-                setPromptText={setPromptText}
-                attachedFile={attachedFile}
-                setAttachedFile={setAttachedFile}
-                activeMode={activeMode}
-                selectedModel={selectedModel}
-                switchModel={switchModel}
-                modelDropdownOpen={modelDropdownOpen}
-                setModelDropdownOpen={setModelDropdownOpen}
-                isVoiceActive={isVoiceActive}
-                setIsVoiceActive={setIsVoiceActive}
-                handleSend={handleSend}
-                fileInputRef={fileInputRef}
-                textareaRef={textareaRef}
-                modelDropdownRef={modelDropdownRef}
-              />
-
-              {/* Mode-Specific Quick Suggestion Chips */}
-              <div className="cpt-suggestions-row">
-                {activeMode === 'cyber' ? (
-                  <>
-                    <button 
-                      className="cpt-suggestion-chip"
-                      onClick={() => setShowRtspModal(true)}
-                    >
-                      <Cctv size={13} className="cpt-chip-icon cyber" />
-                      <span>Connect Real RTSP Stream</span>
-                    </button>
-                    <button 
-                      className="cpt-suggestion-chip"
-                      onClick={() => handleSend("Audit video for facial manipulation, deepfakes, and synthetic artifacts.")}
-                    >
-                      <ShieldAlert size={13} className="cpt-chip-icon cyber" />
-                      <span>Audit for Deepfakes</span>
-                    </button>
-                    <button 
-                      className="cpt-suggestion-chip"
-                      onClick={() => handleSend("Inspect optical flow vectors and check for temporal frame splicing.")}
-                    >
-                      <Zap size={13} className="cpt-chip-icon cyber" />
-                      <span>Detect Frame Splices</span>
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button 
-                      className="cpt-suggestion-chip"
-                      onClick={() => handleSend("https://youtube.com/watch?v=k3_X_09B7mU Summarize this video and extract key takeaways.")}
-                    >
-                      <PlayCircle size={13} className="cpt-chip-icon" />
-                      <span>Summarize YouTube Video</span>
-                    </button>
-                    <button 
-                      className="cpt-suggestion-chip"
-                      onClick={() => handleSend("Analyze scene chapters, speech dynamics, and chronological milestones.")}
-                    >
-                      <Brain size={13} className="cpt-chip-icon" />
-                      <span>Chapter Breakdown</span>
-                    </button>
-                    <button 
-                      className="cpt-suggestion-chip"
-                      onClick={() => handleSend("Extract the primary action sequences and actionable executive takeaways.")}
-                    >
-                      <Sparkles size={13} className="cpt-chip-icon" />
-                      <span>Key Video Takeaways</span>
-                    </button>
-                  </>
-                )}
+                {/* Mode-Specific Quick Suggestion Chips */}
+                <div className="cpt-suggestions-row">
+                  {activeMode === 'cyber' ? (
+                    <>
+                      <button 
+                        className="cpt-suggestion-chip"
+                        onClick={() => setShowRtspModal(true)}
+                      >
+                        <Cctv size={13} className="cpt-chip-icon cyber" />
+                        <span>Connect Real RTSP Stream</span>
+                      </button>
+                      <button 
+                        className="cpt-suggestion-chip"
+                        onClick={() => handleSend("Audit video for facial manipulation, deepfakes, and synthetic artifacts.")}
+                      >
+                        <ShieldAlert size={13} className="cpt-chip-icon cyber" />
+                        <span>Audit for Deepfakes</span>
+                      </button>
+                      <button 
+                        className="cpt-suggestion-chip"
+                        onClick={() => handleSend("Inspect optical flow vectors and check for temporal frame splicing.")}
+                      >
+                        <Zap size={13} className="cpt-chip-icon cyber" />
+                        <span>Detect Frame Splices</span>
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button 
+                        className="cpt-suggestion-chip"
+                        onClick={() => handleSend("https://youtube.com/watch?v=k3_X_09B7mU Summarize this video and extract key takeaways.")}
+                      >
+                        <PlayCircle size={13} className="cpt-chip-icon" />
+                        <span>Summarize YouTube Video</span>
+                      </button>
+                      <button 
+                        className="cpt-suggestion-chip"
+                        onClick={() => handleSend("Analyze scene chapters, speech dynamics, and chronological milestones.")}
+                      >
+                        <Brain size={13} className="cpt-chip-icon" />
+                        <span>Chapter Breakdown</span>
+                      </button>
+                      <button 
+                        className="cpt-suggestion-chip"
+                        onClick={() => handleSend("Extract the primary action sequences and actionable executive takeaways.")}
+                      >
+                        <Sparkles size={13} className="cpt-chip-icon" />
+                        <span>Key Video Takeaways</span>
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -2243,31 +2258,35 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
 
                 <div ref={messagesEndRef} />
               </div>
-
-              {/* Chat Input pinned to bottom */}
-              <div className="cpt-bottom-input-container">
-                <ChatInput
-                  centered={false}
-                  promptText={promptText}
-                  setPromptText={setPromptText}
-                  attachedFile={attachedFile}
-                  setAttachedFile={setAttachedFile}
-                  activeMode={activeMode}
-                  selectedModel={selectedModel}
-                  switchModel={switchModel}
-                  modelDropdownOpen={modelDropdownOpen}
-                  setModelDropdownOpen={setModelDropdownOpen}
-                  isVoiceActive={isVoiceActive}
-                  setIsVoiceActive={setIsVoiceActive}
-                  handleSend={handleSend}
-                  fileInputRef={fileInputRef}
-                  textareaRef={textareaRef}
-                  modelDropdownRef={modelDropdownRef}
-                />
-              </div>
-
             </div>
           )}
+
+          {/* Chat Input permanently pinned to bottom */}
+          <div className="cpt-bottom-input-container">
+            <ChatInput
+              centered={false}
+              promptText={promptText}
+              setPromptText={setPromptText}
+              attachedFile={attachedFile}
+              setAttachedFile={setAttachedFile}
+              attachedLiveStream={attachedLiveStream}
+              setAttachedLiveStream={setAttachedLiveStream}
+              activeStreamConfig={activeStreamConfig}
+              setActiveStreamConfig={setActiveStreamConfig}
+              activeMode={activeMode}
+              selectedModel={selectedModel}
+              switchModel={switchModel}
+              modelDropdownOpen={modelDropdownOpen}
+              setModelDropdownOpen={setModelDropdownOpen}
+              isVoiceActive={isVoiceActive}
+              setIsVoiceActive={setIsVoiceActive}
+              handleSend={handleSend}
+              fileInputRef={fileInputRef}
+              textareaRef={textareaRef}
+              modelDropdownRef={modelDropdownRef}
+              onOpenRtspModal={() => setShowRtspModal(true)}
+            />
+          </div>
         </div>
       </main>
     </div>

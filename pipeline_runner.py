@@ -104,6 +104,46 @@ from typing import Optional, List
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
+# ─────────────────────────────────────────────────────────────────────────────
+# EVENT EMISSION (for SSE streaming to frontend)
+# ─────────────────────────────────────────────────────────────────────────────
+_EMIT_EVENTS = False
+_EMIT_STAGE_MANIFEST = None
+
+def _set_emit_events(enabled: bool):
+    global _EMIT_EVENTS
+    _EMIT_EVENTS = enabled
+
+def _emit_stage_manifest(stages):
+    global _EMIT_STAGE_MANIFEST
+    _EMIT_STAGE_MANIFEST = stages
+    if _EMIT_EVENTS:
+        print(f"STAGE_EVENT:{json.dumps({'type': 'manifest', 'stages': stages})}", flush=True)
+
+def _emit_stage_start(stage_name):
+    if _EMIT_EVENTS:
+        print(f"STAGE_EVENT:{json.dumps({'type': 'start', 'stage': stage_name})}", flush=True)
+
+def _emit_stage_complete(stage_name, result=None):
+    if _EMIT_EVENTS:
+        print(f"STAGE_EVENT:{json.dumps({'type': 'complete', 'stage': stage_name, 'result': result})}", flush=True)
+
+def _emit_stage_skip(stage_name, reason):
+    if _EMIT_EVENTS:
+        print(f"STAGE_EVENT:{json.dumps({'type': 'skip', 'stage': stage_name, 'reason': reason})}", flush=True)
+
+def _emit_chunk_event(chunk_data):
+    if _EMIT_EVENTS:
+        print(f"CHUNK_EVENT:{json.dumps(chunk_data)}", flush=True)
+
+def _emit_observation_event(obs_data):
+    if _EMIT_EVENTS:
+        print(f"OBSERVATION_EVENT:{json.dumps(obs_data)}", flush=True)
+
+def _emit_alert_event(alert_data):
+    if _EMIT_EVENTS:
+        print(f"ALERT_EVENT:{json.dumps(alert_data)}", flush=True)
+
 def _ensure_ffmpeg():
     import shutil
     if shutil.which("ffmpeg"):
@@ -825,6 +865,43 @@ def run_full_pipeline(
     print(f"  [Pipeline] Mode: {mode.upper()} | Source: {source_type}", flush=True)
     print(f"{'═'*60}\n", flush=True)
 
+    # ── Stage Manifest ───────────────────────────────────────────────────────
+    if mode == "cyber":
+        stage_names = [
+            "source_ingestion",
+            "duplication_check",
+            "quality_gate",
+            "manipulation_detection",
+            "ai_generation_detection",
+            "orchestrator_routing",
+            "scene_segmentation",
+            "asr_transcription",
+            "vision_perception",
+            "multimodal_fusion",
+            "domain_output",
+            "acoustic_event_detection",
+            "geo_estimation",
+            "face_reid",
+            "alert_system"
+        ]
+    else:
+        stage_names = [
+            "source_ingestion",
+            "duplication_check",
+            "quality_gate",
+            "manipulation_detection",
+            "ai_generation_detection",
+            "orchestrator_routing",
+            "scene_segmentation",
+            "asr_transcription",
+            "vision_perception",
+            "multimodal_fusion",
+            "domain_output"
+        ]
+    
+    stages = [{"name": name, "status": "pending", "applicable": True} for name in stage_names]
+    _emit_stage_manifest(stages)
+
     result = {
         "pipeline_halted":   False,
         "halt_reason":       None,
@@ -872,6 +949,7 @@ def run_full_pipeline(
             print(f"  [Pipeline] ⚠️ URL auto-ingest warning: {exc}. Proceeding with stream metadata.", flush=True)
 
     # ── Step 3: Duplication Check ──────────────────────────────────────────
+    _emit_stage_start("duplication_check")
     print("\n  [Pipeline] ▶ Step 3 — Duplication Check", flush=True)
     dedup_mod, dedup_ok = _try_import("duplication_check", "Duplication Check")
     if not skip_dedup and dedup_ok and local_video_path and os.path.exists(local_video_path):
@@ -905,18 +983,24 @@ def run_full_pipeline(
                 result["halt_reason"]     = dedup_result.get("halt_reason", "Duplicate detected")
                 result["halt_step"]       = "duplication_check"
                 result["completed_at"]    = datetime.datetime.utcnow().isoformat() + "Z"
+                _emit_stage_complete("duplication_check", {"halted": True, "reason": result["halt_reason"]})
                 print(f"  [Pipeline] ⛔ HALT — {result['halt_reason']}", flush=True)
                 return result
         if not dedup_result.get("halt_pipeline"):
             print("  [Pipeline] ✅ Step 3 — No duplicates.", flush=True)
+            _emit_stage_complete("duplication_check", {"halted": False})
         else:
             print("  [Pipeline] ✅ Step 3 — Duplicate flags recorded (soft-halt); continuing.", flush=True)
+            _emit_stage_complete("duplication_check", {"halted": False, "soft_halt": True})
     elif skip_dedup:
         print("  [Pipeline] ⏭️  Step 3 skipped (--skip-dedup enabled).", flush=True)
+        _emit_stage_skip("duplication_check", "--skip-dedup enabled")
     else:
         print("  [Pipeline] ⚠️  Step 3 skipped (no video file or module unavailable).", flush=True)
+        _emit_stage_skip("duplication_check", "no video file or module unavailable")
 
     # ── Step 2: Quality Gate ───────────────────────────────────────────────
+    _emit_stage_start("quality_gate")
     print("\n  [Pipeline] ▶ Step 2 — Quality Gate", flush=True)
     if not timeline_payload and local_video_path and os.path.exists(local_video_path):
         # Auto-build a basic timeline payload from video metadata
@@ -934,12 +1018,16 @@ def run_full_pipeline(
                 result["halt_reason"]     = "Quality gate FAIL"
                 result["halt_step"]       = "quality_gate"
                 result["completed_at"]    = datetime.datetime.utcnow().isoformat() + "Z"
+                _emit_stage_complete("quality_gate", {"verdict": "FAIL", "halted": True})
                 print(f"  [Pipeline] ⛔ HALT — Quality gate failed.", flush=True)
                 return result
+            _emit_stage_complete("quality_gate", {"verdict": verdict, "halted": False})
     else:
         print("  [Pipeline] ⚠️  Step 2 skipped (no timeline payload provided).", flush=True)
+        _emit_stage_skip("quality_gate", "no timeline payload provided")
 
     # ── Step 4: Manipulation Detection ────────────────────────────────────
+    _emit_stage_start("manipulation_detection")
     print("\n  [Pipeline] ▶ Step 4 — Manipulation Detection", flush=True)
     manipulation_verdict = "CLEAN"
     if local_video_path and os.path.exists(local_video_path):
@@ -968,12 +1056,38 @@ def run_full_pipeline(
                 print(f"  [Pipeline] ✅ Step 4 — Manipulation verdict: {manipulation_verdict}", flush=True)
                 if manipulation_verdict == "FLAGGED" and not manip_res.manipulation_check.detector_error:
                     print("  [Pipeline] ⚠️  Deepfake/manipulation flagged — routing to review queue.", flush=True)
+                _emit_stage_complete("manipulation_detection", {"verdict": manipulation_verdict})
             except Exception as exc:
                 print(f"  [Pipeline] ⚠️  Step 4 error: {exc}", flush=True)
+                _emit_stage_complete("manipulation_detection", {"error": str(exc)})
     else:
         print("  [Pipeline] ⚠️  Step 4 skipped (no video file).", flush=True)
+        _emit_stage_skip("manipulation_detection", "no video file")
+
+    # ── Step 4b: AI Generation Detection ──────────────────────────────────
+    _emit_stage_start("ai_generation_detection")
+    print("\n  [Pipeline] ▶ Step 4b — AI Generation Detection", flush=True)
+    ai_gen_result = None
+    if local_video_path and os.path.exists(local_video_path):
+        ai_mod, ai_ok = _try_import("ai_generation_detection", "AI Generation Detection")
+        if ai_ok:
+            try:
+                ai_gen_result = ai_mod.analyze_ai_generation(local_video_path)
+                result["ai_generation_result"] = ai_gen_result
+                print(f"  [Pipeline] ✅ Step 4b — AI Generation verdict: {ai_gen_result.get('verdict', 'UNKNOWN')}", flush=True)
+                _emit_stage_complete("ai_generation_detection", {"verdict": ai_gen_result.get('verdict', 'UNKNOWN')})
+            except Exception as exc:
+                print(f"  [Pipeline] ⚠️  Step 4b error: {exc}", flush=True)
+                _emit_stage_complete("ai_generation_detection", {"error": str(exc)})
+        else:
+            print("  [Pipeline] ⚠️  Step 4b skipped (module unavailable).", flush=True)
+            _emit_stage_skip("ai_generation_detection", "module unavailable")
+    else:
+        print("  [Pipeline] ⚠️  Step 4b skipped (no video file).", flush=True)
+        _emit_stage_skip("ai_generation_detection", "no video file")
 
     # ── Step 5: Orchestrator Routing ───────────────────────────────────────
+    _emit_stage_start("orchestrator_routing")
     print("\n  [Pipeline] ▶ Step 5 — Orchestrator Brain (Routing Decision)", flush=True)
 
     # Detect audio presence via ffprobe (not just file existence)
@@ -996,11 +1110,13 @@ def run_full_pipeline(
     mode = routing.get("mode", mode)  # Use orchestrator's confirmed mode
     tool_calls = routing.get("tool_calls", [])
     print(f"  [Pipeline] ✅ Step 5 — Mode: {mode.upper()} | Tools: {tool_calls}", flush=True)
+    _emit_stage_complete("orchestrator_routing", {"mode": mode, "tools": tool_calls})
 
     # Release orchestrator VRAM before loading perception models
     unload_orchestrator()
 
     # ── Step 6: Scene Segmentation ─────────────────────────────────────────
+    _emit_stage_start("scene_segmentation")
     scenes = []
     if "scene_segmentation" in tool_calls and local_video_path and os.path.exists(local_video_path):
         print("\n  [Pipeline] ▶ Step 6 — Scene Segmentation", flush=True)
@@ -1015,12 +1131,16 @@ def run_full_pipeline(
                 scenes = seg_result.get("scenes", [])
                 result["scene_result"] = seg_result
                 print(f"  [Pipeline] ✅ Step 6 — {len(scenes)} scene(s) detected.", flush=True)
+                _emit_stage_complete("scene_segmentation", {"scene_count": len(scenes)})
             except Exception as exc:
                 print(f"  [Pipeline] ⚠️  Step 6 error: {exc}", flush=True)
+                _emit_stage_complete("scene_segmentation", {"error": str(exc)})
     else:
         print("  [Pipeline] ⚠️  Step 6 (Scene Segmentation) skipped.", flush=True)
+        _emit_stage_skip("scene_segmentation", "not in tool calls or no video")
 
     # ── Step 7a: ASR Transcription ────────────────────────────────────────
+    _emit_stage_start("asr_transcription")
     asr_result = None
     if not skip_asr and "asr_agent" in tool_calls and local_video_path:
         print("\n  [Pipeline] ▶ Step 7a — ASR Transcription (Whisper)", flush=True)
@@ -1036,12 +1156,16 @@ def run_full_pipeline(
                     f"lang={asr_result.get('language', 'unknown')}",
                     flush=True
                 )
+            _emit_stage_complete("asr_transcription", {"word_count": asr_result.get('word_count', 0), "language": asr_result.get('language', 'unknown')})
         except ImportError:
             print("  [Pipeline] ⚠️  Step 7a skipped — asr_agent not available.", flush=True)
+            _emit_stage_skip("asr_transcription", "asr_agent not available")
         except Exception as exc:
             print(f"  [Pipeline] ⚠️  Step 7a error: {exc}", flush=True)
+            _emit_stage_complete("asr_transcription", {"error": str(exc)})
     else:
         print("  [Pipeline] ⚠️  Step 7a (ASR) skipped.", flush=True)
+        _emit_stage_skip("asr_transcription", "skipped or no video")
 
     # ── Step 7b: Worker Key Feature Extraction & Smart Keyframing ────────
     key_features = {}
@@ -1079,6 +1203,7 @@ def run_full_pipeline(
         print("  [Pipeline] ⚠️  Step 7b skipped (no video file).", flush=True)
 
     # ── Step 7c (VL): Vision Analysis (VL Brain) ──────────────────────────
+    _emit_stage_start("vision_perception")
     vl_output_text = None
     if not skip_vl and "perception_agent" in tool_calls and local_video_path:
         print("\n  [Pipeline] ▶ Step 7c — Vision Analysis (VL Brain)", flush=True)
@@ -1104,12 +1229,16 @@ def run_full_pipeline(
                 vl_output_text = run_vision_analysis(frames, user_question, vl_meta)
                 result["vl_output"] = vl_output_text
                 print("  [Pipeline] ✅ Step 7c — VL analysis complete.", flush=True)
+                _emit_stage_complete("vision_perception", {"frames_analyzed": len(frames)})
             else:
                 print("  [Pipeline] ⚠️  Step 7c — No frames extracted.", flush=True)
+                _emit_stage_complete("vision_perception", {"error": "no frames extracted"})
         except Exception as exc:
             print(f"  [Pipeline] ⚠️  Step 7c error: {exc}", flush=True)
+            _emit_stage_complete("vision_perception", {"error": str(exc)})
     else:
         print("  [Pipeline] ⚠️  Step 7c (VL) skipped.", flush=True)
+        _emit_stage_skip("vision_perception", "skipped or no video")
 
     # Release VL model from VRAM before loading Text Brain later
     try:
@@ -1118,14 +1247,58 @@ def run_full_pipeline(
     except ImportError:
         pass
 
-    # ── Cyber Mode Steps (C1–C4) ──────────────────────────────────────────
-    acoustic_result = None
-    geo_result = None
-    face_reid_result = None
-    alert_result = None
+    # ── Step 8: Multimodal Fusion ──────────────────────────────────────────
+    _emit_stage_start("multimodal_fusion")
+    print("\n  [Pipeline] ▶ Step 8 — Multimodal Fusion", flush=True)
+    fusion_result = None
+    try:
+        from fusion_agent import run_fusion
+        fusion_result = run_fusion(
+            scenes=scenes,
+            asr_result=result.get("asr_result"),
+            vl_output=result.get("vl_output"),
+            key_features=result.get("key_features"),
+            manipulation_result=result.get("manipulation_result"),
+            ai_generation_result=result.get("ai_generation_result"),
+            mode=mode,
+            source_type=source_type,
+        )
+        result["fusion_result"] = fusion_result
+        print("  [Pipeline] ✅ Step 8 — Fusion complete.", flush=True)
+        _emit_stage_complete("multimodal_fusion", {"fused": True})
+    except Exception as exc:
+        print(f"  [Pipeline] ⚠️  Step 8 error: {exc}", flush=True)
+        _emit_stage_complete("multimodal_fusion", {"error": str(exc)})
+
+    # ── Step 9: Domain Output ──────────────────────────────────────────────
+    _emit_stage_start("domain_output")
+    print("\n  [Pipeline] ▶ Step 9 — Domain Output", flush=True)
+    domain_output = None
+    try:
+        from domain_output import run_domain_output
+        domain_output = run_domain_output(
+            fusion_result=fusion_result,
+            mode=mode,
+            user_question=user_question,
+            source_type=source_type,
+            video_path=local_video_path,
+            video_title=video_title or os.path.basename(local_video_path) if local_video_path else None,
+            manipulation_verdict=manipulation_verdict,
+            acoustic_result=result.get("acoustic_result"),
+            geo_result=result.get("geo_result"),
+            face_reid_result=result.get("face_reid_result"),
+            alert_result=result.get("alert_result"),
+        )
+        result["domain_output"] = domain_output
+        print("  [Pipeline] ✅ Step 9 — Domain output complete.", flush=True)
+        _emit_stage_complete("domain_output", {"output": "complete"})
+    except Exception as exc:
+        print(f"  [Pipeline] ⚠️  Step 9 error: {exc}", flush=True)
+        _emit_stage_complete("domain_output", {"error": str(exc)})
 
     if mode == "cyber":
         # ── Step C1: Acoustic Event Detection ─────────────────────────────
+        _emit_stage_start("acoustic_event_detection")
         if "acoustic_event_detection" in tool_calls and local_video_path and os.path.exists(local_video_path):
             print("\n  [Pipeline] ▶ Step C1 — Acoustic Event Detection (YAMNet)", flush=True)
             try:
@@ -1135,14 +1308,19 @@ def run_full_pipeline(
                 n_events = len(acoustic_result.get("events", []))
                 backend = acoustic_result.get("backend", "unknown")
                 print(f"  [Pipeline] ✅ Step C1 — {n_events} event(s) via {backend}.", flush=True)
+                _emit_stage_complete("acoustic_event_detection", {"events": n_events, "backend": backend})
             except ImportError:
                 print("  [Pipeline] ⚠️  Step C1 skipped — acoustic_event_detection not available.", flush=True)
+                _emit_stage_skip("acoustic_event_detection", "module unavailable")
             except Exception as exc:
                 print(f"  [Pipeline] ⚠️  Step C1 error: {exc}", flush=True)
+                _emit_stage_complete("acoustic_event_detection", {"error": str(exc)})
         else:
             print("  [Pipeline] ⚠️  Step C1 (Acoustic) skipped.", flush=True)
+            _emit_stage_skip("acoustic_event_detection", "not in tool calls or no video")
 
         # ── Step C2: Geo Estimation ───────────────────────────────────────
+        _emit_stage_start("geo_estimation")
         if "geo_estimation_agent" in tool_calls and local_video_path and os.path.exists(local_video_path):
             print("\n  [Pipeline] ▶ Step C2 — Geo Estimation (GeoCLIP)", flush=True)
             try:
@@ -1152,16 +1330,22 @@ def run_full_pipeline(
                 gps = geo_result.get("gps")
                 if gps:
                     print(f"  [Pipeline] ✅ Step C2 — ({gps['lat']}, {gps['lon']}) conf={gps['confidence']}", flush=True)
+                    _emit_stage_complete("geo_estimation", {"lat": gps['lat'], "lon": gps['lon'], "confidence": gps['confidence']})
                 else:
                     print(f"  [Pipeline] ⚠️  Step C2 — no GPS estimate: {geo_result.get('error', 'unknown')}", flush=True)
+                    _emit_stage_complete("geo_estimation", {"error": geo_result.get('error', 'unknown')})
             except ImportError:
                 print("  [Pipeline] ⚠️  Step C2 skipped — geo_estimation_agent not available.", flush=True)
+                _emit_stage_skip("geo_estimation", "module unavailable")
             except Exception as exc:
                 print(f"  [Pipeline] ⚠️  Step C2 error: {exc}", flush=True)
+                _emit_stage_complete("geo_estimation", {"error": str(exc)})
         else:
             print("  [Pipeline] ⚠️  Step C2 (Geo) skipped.", flush=True)
+            _emit_stage_skip("geo_estimation", "not in tool calls or no video")
 
         # ── Step C3: Face Re-ID (governance gated) ────────────────────────
+        _emit_stage_start("face_reid")
         if "face_reid_agent" in tool_calls and local_video_path and os.path.exists(local_video_path):
             print("\n  [Pipeline] ▶ Step C3 — Face Re-ID (InsightFace)", flush=True)
             if governance_approved:
@@ -1175,10 +1359,13 @@ def run_full_pipeline(
                     n_identities = len(face_reid_result.get("identities", []))
                     n_faces = face_reid_result.get("faces_detected", 0)
                     print(f"  [Pipeline] ✅ Step C3 — {n_faces} face(s) → {n_identities} identity/identities.", flush=True)
+                    _emit_stage_complete("face_reid", {"faces": n_faces, "identities": n_identities})
                 except ImportError:
                     print("  [Pipeline] ⚠️  Step C3 skipped — face_reid_agent not available.", flush=True)
+                    _emit_stage_skip("face_reid", "module unavailable")
                 except Exception as exc:
                     print(f"  [Pipeline] ⚠️  Step C3 error: {exc}", flush=True)
+                    _emit_stage_complete("face_reid", {"error": str(exc)})
             else:
                 print("  [Pipeline] ⏭️  Step C3 skipped — governance not approved.", flush=True)
                 face_reid_result = {
@@ -1189,10 +1376,13 @@ def run_full_pipeline(
                     "error": "Governance not approved.",
                 }
                 result["face_reid_result"] = face_reid_result
+                _emit_stage_skip("face_reid", "governance not approved")
         else:
             print("  [Pipeline] ⚠️  Step C3 (Face Re-ID) skipped.", flush=True)
+            _emit_stage_skip("face_reid", "not in tool calls or no video")
 
         # ── Step C4: Alert System ─────────────────────────────────────────
+        _emit_stage_start("alert_system")
         if "alert_system" in tool_calls or mode == "cyber":
             print("\n  [Pipeline] ▶ Step C4 — Alert System", flush=True)
             try:
@@ -1208,10 +1398,16 @@ def run_full_pipeline(
                 n_alerts = alert_result.get("total_alerts", 0)
                 highest = alert_result.get("highest_severity", "NONE")
                 print(f"  [Pipeline] ✅ Step C4 — {n_alerts} alert(s), highest: {highest}.", flush=True)
+                _emit_stage_complete("alert_system", {"alerts": n_alerts, "highest_severity": highest})
             except ImportError:
                 print("  [Pipeline] ⚠️  Step C4 skipped — alert_system not available.", flush=True)
+                _emit_stage_skip("alert_system", "module unavailable")
             except Exception as exc:
                 print(f"  [Pipeline] ⚠️  Step C4 error: {exc}", flush=True)
+                _emit_stage_complete("alert_system", {"error": str(exc)})
+        else:
+            print("  [Pipeline] ⚠️  Step C4 (Alert) skipped.", flush=True)
+            _emit_stage_skip("alert_system", "not in tool calls")
 
     # ── Review Queue (manipulation flagged or cyber critical) ──────────────
     if manipulation_verdict == "FLAGGED" or (alert_result and alert_result.get("highest_severity") == "CRITICAL"):
@@ -1319,6 +1515,7 @@ def run_full_pipeline(
                 pass
 
     result["completed_at"] = datetime.datetime.utcnow().isoformat() + "Z"
+    _emit_stage_complete("pipeline_complete", {"mode": mode, "halted": result['pipeline_halted']})
     print(f"\n{'═'*60}", flush=True)
     print(f"  [Pipeline] ✅ Pipeline complete!", flush=True)
     print(f"  [Pipeline] Mode: {mode.upper()} | Halted: {result['pipeline_halted']}", flush=True)
@@ -2046,12 +2243,17 @@ def _build_parser():
     p.add_argument("--video-id",         default=None, dest="video_id")
     p.add_argument("--no-hashes",        action="store_true", dest="no_hashes")
     p.add_argument("--pretty",           action="store_true")
+    p.add_argument("--emit-events",      action="store_true", dest="emit_events",
+                   help="Emit STAGE_EVENT, CHUNK_EVENT, OBSERVATION_EVENT, ALERT_EVENT to stdout for SSE streaming.")
     return p
 
 
 if __name__ == "__main__":
     parser = _build_parser()
     args   = parser.parse_args()
+
+    if args.emit_events:
+        _set_emit_events(True)
 
     if args.legacy:
         # ── Legacy mode ────────────────────────────────────────────────────

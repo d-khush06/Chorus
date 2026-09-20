@@ -4,6 +4,7 @@ const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const passport = require('passport');
 const { protect } = require('../middleware/auth');
+const { generateTicket } = require('../services/streamTicket');
 
 // Helper function to issue JWT
 const sendTokenResponse = (user, statusCode, res) => {
@@ -117,6 +118,26 @@ router.get('/github/callback', (req, res, next) => {
   }
   passport.authenticate('github', { failureRedirect: '/login', session: false })(req, res, next);
 }, oauthRedirect);
+
+// @route   POST /api/auth/stream-ticket
+// @desc    Generate a multi-use stream ticket for authenticated video access
+router.post('/stream-ticket', protect, async (req, res) => {
+  try {
+    const { resourceId } = req.body;
+    if (!resourceId) {
+      return res.status(400).json({ success: false, error: 'resourceId is required' });
+    }
+    const ticket = generateTicket(req.user._id.toString(), resourceId);
+    res.json({
+      success: true,
+      ticket: ticket.id,
+      expiresAt: ticket.expiresAt,
+      ttl: 15 * 60
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 module.exports = router;
 

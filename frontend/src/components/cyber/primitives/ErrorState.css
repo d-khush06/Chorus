@@ -1,0 +1,32 @@
+.cyber-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 3rem 1.5rem;
+  border: 1px solid var(--cyber-danger);
+  background-color: rgba(var(--cyber-danger-rgb, 166, 61, 64), 0.05);
+  border-radius: 8px;
+}
+
+.error-state-icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 1.5rem;
+  color: var(--cyber-danger);
+}
+
+.error-state-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--cyber-danger);
+}
+
+.error-state-description {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--cyber-text-secondary);
+  max-width: 32rem;
+}
