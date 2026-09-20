@@ -78,46 +78,77 @@ export function useSSE(runId, options = {}) {
   const lastEventIdRef = useRef(options.lastEventId || null);
 
   const connect = useCallback(() => {
-    if (!token || !runId) return;
+    let isCancelled = false;
 
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
-
-    const url = new URL(`${API_BASE}/api/analyze/runs/${runId}/events`);
-    if (lastEventIdRef.current) {
-      url.searchParams.set('lastEventId', lastEventIdRef.current);
-    }
-
-    const es = new EventSource(url.toString(), {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    eventSourceRef.current = es;
-
-    es.onopen = () => {
-      setConnected(true);
-      setError(null);
-    };
-
-    es.onmessage = (event) => {
+    async function initEventSource() {
       try {
-        const data = JSON.parse(event.data);
-        lastEventIdRef.current = data.id;
-        setEvents(prev => [...prev.slice(-499), data]);
-        options.onEvent?.(data);
-      } catch (err) {
-        console.warn('SSE parse error:', err);
-      }
-    };
+        let ticketParam = '';
+        if (token) {
+          try {
+            const ticketRes = await fetch(`${API_BASE}/api/auth/stream-ticket`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ resourceId: runId })
+            });
+            if (ticketRes.ok) {
+              const ticketData = await ticketRes.json();
+              if (ticketData.ticket) {
+                ticketParam = `ticket=${encodeURIComponent(ticketData.ticket)}`;
+              }
+            }
+          } catch (tErr) {
+            console.warn('[useSSE] Ticket fetch failed, attempting without ticket:', tErr);
+          }
+        }
 
-    es.onerror = (err) => {
-      setConnected(false);
-      if (es.readyState === EventSource.CLOSED) {
-        setError('Connection closed');
-        options.onError?.(err);
-      } else {
-        // Reconnection will happen automatically
+        if (isCancelled) return;
+
+        const url = new URL(`${API_BASE}/api/analyze/runs/${runId}/events`);
+        if (ticketParam) {
+          url.searchParams.set('ticket', ticketParam.replace('ticket=', ''));
+        }
+        if (lastEventIdRef.current) {
+          url.searchParams.set('lastEventId', lastEventIdRef.current);
+        }
+
+        const es = new EventSource(url.toString());
+        eventSourceRef.current = es;
+
+        es.onopen = () => {
+          setConnected(true);
+          setError(null);
+        };
+
+        es.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.id) lastEventIdRef.current = data.id;
+            setEvents(prev => [...prev.slice(-499), data]);
+            options.onEvent?.(data);
+          } catch (err) {
+            console.warn('SSE parse error:', err);
+          }
+        };
+
+        es.onerror = (err) => {
+          setConnected(false);
+          if (es.readyState === EventSource.CLOSED) {
+            setError('Connection closed');
+            options.onError?.(err);
+          }
+        };
+      } catch (err) {
+        setError(err.message);
       }
+    }
+
+    initEventSource();
+
+    return () => {
+      isCancelled = true;
     };
   }, [token, runId, options]);
 

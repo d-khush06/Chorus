@@ -6,7 +6,9 @@ import AppSettingsModal from '../ui/AppSettingsModal.jsx';
 import HelpSupportModal from '../ui/HelpSupportModal.jsx';
 import RtspConnectorModal from '../ui/RtspConnectorModal.jsx';
 import AuthContext from '../../context/AuthContext';
-import { analyzeVideo, chatAboutVideo } from '../../data/api.js';
+import { analyzeVideo, chatAboutVideo, fetchCases } from '../../data/api.js';
+import { ThemeToggle } from '../cyber/primitives/ThemeToggle';
+import { StageTracker } from '../cyber/StageTracker';
 import './ChatGPTGeneralView.css';
 import {
   Search, PanelLeft, Plus, X, Sparkles, Brain, Mic, AudioLines,
@@ -14,10 +16,13 @@ import {
   ChevronDown, ChevronRight, Check, Copy, ThumbsUp, ThumbsDown, RotateCcw,
   ArrowUp, Clock, AlertTriangle, ShieldCheck, Zap, Sliders,
   CircleUser, HelpCircle, LogOut, Pin, Trash2, UploadCloud, Activity,
-  Play, Pause, ExternalLink, Video, Cctv, PlayCircle, MoreHorizontal, Globe
+  Play, Pause, ExternalLink, Video, Cctv, PlayCircle, MoreHorizontal, Globe,
+  Compass, Radio
 } from 'lucide-react';
 
-const INITIAL_HISTORY = [
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+const MOCK_DEMO_HISTORY = [
   {
     id: 'hist-1',
     title: 'CR-889 — CCTV Perimeter Tamper Audit',
@@ -163,6 +168,8 @@ const INITIAL_HISTORY = [
     messages: []
   }
 ];
+
+const INITIAL_HISTORY = import.meta.env.VITE_USE_MOCKS === 'true' ? MOCK_DEMO_HISTORY : [];
 
 // FormattedMessageContent Component: Cleanly formats and renders text with zero raw asterisks, hashtags, or markdown artifacts.
 function FormattedMessageContent({ content, className = '' }) {
@@ -697,6 +704,19 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showRtspModal, setShowRtspModal] = useState(false);
   const [activeStreamConfig, setActiveStreamConfig] = useState(null);
+  const [casesCount, setCasesCount] = useState(0);
+  const [activeRunStages, setActiveRunStages] = useState([]);
+  const [activeRunCurrentStage, setActiveRunCurrentStage] = useState(null);
+  const [activeRunProgress, setActiveRunProgress] = useState(0);
+
+  useEffect(() => {
+    fetchCases()
+      .then(data => {
+        if (Array.isArray(data)) setCasesCount(data.length);
+      })
+      .catch(() => setCasesCount(0));
+  }, []);
+
   const [userAvatar, setUserAvatar] = useState(() => {
     try {
       return localStorage.getItem('chorus_user_avatar') || '';
@@ -1017,18 +1037,82 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
           mode: sessionMode,
           model: effectiveModel
         });
+
         if (res && res.success) {
-          apiResult = res.result;
-          isPlaylist = res.is_playlist;
-          playlistData = res.playlist_data;
+          if (res.runId) {
+            // Live SSE stage tracking from backend
+            let ticket = null;
+            try {
+              const token = localStorage.getItem('token');
+              const tRes = await fetch(`${API_BASE}/api/auth/stream-ticket`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify({ resourceId: res.runId })
+              });
+              if (tRes.ok) {
+                const tData = await tRes.json();
+                ticket = tData.ticket;
+              }
+            } catch (ticketErr) {
+              console.warn('[Chorus UI] Stream ticket fetch warning:', ticketErr.message);
+            }
+
+            const sseUrl = `${API_BASE}/api/analyze/runs/${res.runId}/events${ticket ? `?ticket=${ticket}` : ''}`;
+            await new Promise((resolve) => {
+              const es = new EventSource(sseUrl);
+              const cleanup = () => {
+                try { es.close(); } catch {}
+                resolve();
+              };
+
+              es.onmessage = (evt) => {
+                try {
+                  const data = JSON.parse(evt.data);
+                  if (data.type === 'STAGE_EVENT') {
+                    if (data.stage) setActiveRunCurrentStage(data.stage);
+                    if (Array.isArray(data.stages)) setActiveRunStages(data.stages);
+                    if (data.progress !== undefined) setActiveRunProgress(data.progress);
+                  } else if (data.type === 'RUN_COMPLETED' || data.status === 'completed') {
+                    if (data.result) apiResult = data.result;
+                    cleanup();
+                  } else if (data.type === 'RUN_FAILED' || data.status === 'failed') {
+                    cleanup();
+                  }
+                } catch (e) {}
+              };
+
+              es.onerror = () => {
+                cleanup();
+              };
+
+              // Safety polling check
+              setTimeout(async () => {
+                try {
+                  const token = localStorage.getItem('token');
+                  const checkRes = await fetch(`${API_BASE}/api/analyze/runs/${res.runId}`, {
+                    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                  });
+                  if (checkRes.ok) {
+                    const checkData = await checkRes.json();
+                    if (checkData.run?.result) apiResult = checkData.run.result;
+                  }
+                } catch (e) {}
+                cleanup();
+              }, 12000);
+            });
+          } else {
+            apiResult = res.result;
+            isPlaylist = res.is_playlist;
+            playlistData = res.playlist_data;
+          }
         }
       } catch (err) {
         console.warn('[Chorus UI] Backend pipeline error, using resilient simulation fallback:', err.message);
       }
 
-      // Brief animation pacing
-      const delay = effectiveModel === 'deepthink' ? 1800 : 600;
-      await new Promise(r => setTimeout(r, delay));
       setIsThinking(false);
       setPipelineStepText('');
 
@@ -1403,7 +1487,7 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
           >
             <Scale size={15} className="cpt-nav-icon" />
             <span>Evidence Room</span>
-            <span className="cpt-nav-badge">3 Cases</span>
+            <span className="cpt-nav-badge">{casesCount > 0 ? `${casesCount} Case${casesCount !== 1 ? 's' : ''}` : '0 Cases'}</span>
           </div>
         </div>
 
@@ -1504,6 +1588,9 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
 
         {/* User Profile & Popover Menu */}
         <div className="cpt-sidebar-footer" ref={userMenuRef}>
+          <div style={{ padding: '8px 12px 10px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'center' }}>
+            <ThemeToggle showLabel />
+          </div>
           {userMenuOpen && (
             <div className="cpt-user-popover">
               <div 
@@ -1673,48 +1760,73 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
         {/* Content Area */}
         <div className="cpt-content">
 
-          {/* EMPTY STATE */}
-          {!activeSession && (
-            <div className="cpt-empty-state">
-              <div className="cpt-empty-hero">
-                <h1 className="cpt-greeting">
-                  {activeMode === 'cyber' ? 'Chorus Cyber Forensics' : `What's next, ${userFirstName}?`}
-                </h1>
-                <p className="cpt-sub-greeting">
-                  {activeMode === 'cyber' 
-                    ? 'Tamper Detection, Deepfake Screening & Live Stream Auditing'
-                    : 'Video Analytics, Chapter Summarization & Multimodal Intelligence'
-                  }
+          {/* CYBER MODE CONSOLE ENTRY CARDS OR GENERAL CHAT */}
+          {activeMode === 'cyber' ? (
+            <div className="cpt-cyber-hub">
+              <div className="cpt-cyber-hub-hero">
+                <h1 className="cpt-cyber-hub-title">Chorus Cyber Forensics</h1>
+                <p className="cpt-cyber-hub-subtitle">
+                  Real-time camera surveillance, multi-stage evidentiary tampering audits, and subject trace forensics. Select a dedicated console to begin.
                 </p>
+              </div>
 
-                {/* Mode-Specific Quick Suggestion Chips */}
-                <div className="cpt-suggestions-row">
-                  {activeMode === 'cyber' ? (
-                    <>
-                      <button 
-                        className="cpt-suggestion-chip"
-                        onClick={() => setShowRtspModal(true)}
-                      >
-                        <Cctv size={13} className="cpt-chip-icon cyber" />
-                        <span>Connect Real RTSP Stream</span>
-                      </button>
-                      <button 
-                        className="cpt-suggestion-chip"
-                        onClick={() => handleSend("Audit video for facial manipulation, deepfakes, and synthetic artifacts.")}
-                      >
-                        <ShieldAlert size={13} className="cpt-chip-icon cyber" />
-                        <span>Audit for Deepfakes</span>
-                      </button>
-                      <button 
-                        className="cpt-suggestion-chip"
-                        onClick={() => handleSend("Inspect optical flow vectors and check for temporal frame splicing.")}
-                      >
-                        <Zap size={13} className="cpt-chip-icon cyber" />
-                        <span>Detect Frame Splices</span>
-                      </button>
-                    </>
-                  ) : (
-                    <>
+              <div className="cpt-cyber-cards-grid">
+                <div className="cpt-cyber-card" onClick={() => navigate('/cyber/live')}>
+                  <div className="cpt-cyber-card-icon">
+                    <Cctv size={32} />
+                  </div>
+                  <h3 className="cpt-cyber-card-title">Live Watch</h3>
+                  <p className="cpt-cyber-card-desc">
+                    Real-time RTSP stream ingest, 30s sliding chunk analysis, optical flow vector continuity, and live agent standing watch rules.
+                  </p>
+                  <div className="cpt-cyber-card-footer">
+                    <span className="cpt-cyber-card-tag">RTSP CAMERA</span>
+                    <button className="cpt-cyber-card-btn">Launch Console →</button>
+                  </div>
+                </div>
+
+                <div className="cpt-cyber-card" onClick={() => navigate('/cyber/forensic')}>
+                  <div className="cpt-cyber-card-icon">
+                    <ShieldAlert size={32} />
+                  </div>
+                  <h3 className="cpt-cyber-card-title">Forensic Analysis</h3>
+                  <p className="cpt-cyber-card-desc">
+                    Deep multi-stage video integrity audit, SBI deepfake screening, quality gate validation, ffprobe container inspection, and cryptographic Merkle custody.
+                  </p>
+                  <div className="cpt-cyber-card-footer">
+                    <span className="cpt-cyber-card-tag">FILE / URL INGEST</span>
+                    <button className="cpt-cyber-card-btn">Open Suite →</button>
+                  </div>
+                </div>
+
+                <div className="cpt-cyber-card" onClick={() => navigate('/cyber/trace')}>
+                  <div className="cpt-cyber-card-icon">
+                    <Compass size={32} />
+                  </div>
+                  <h3 className="cpt-cyber-card-title">Trace</h3>
+                  <p className="cpt-cyber-card-desc">
+                    Multi-camera person tracking and keyframe geographic location estimation. Governance-gated biometric evaluation.
+                  </p>
+                  <div className="cpt-cyber-card-footer">
+                    <span className="cpt-cyber-card-tag">COMING SOON</span>
+                    <button className="cpt-cyber-card-btn" style={{ opacity: 0.7 }}>View Status →</button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="cpt-cyber-notice">
+                All cyber operations run through the hardened unified pipeline via <code>POST /api/analyze</code>. Camera credentials are masked automatically.
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* GENERAL MODE EMPTY STATE */}
+              {!activeSession && (
+                <div className="cpt-empty-state">
+                  <div className="cpt-empty-hero">
+                    <h1 className="cpt-greeting">{`What's next, ${userFirstName}?`}</h1>
+                    <p className="cpt-sub-greeting">Video Analytics, Chapter Summarization & Multimodal Intelligence</p>
+                    <div className="cpt-suggestions-row">
                       <button 
                         className="cpt-suggestion-chip"
                         onClick={() => handleSend("https://youtube.com/watch?v=k3_X_09B7mU Summarize this video and extract key takeaways.")}
@@ -1736,16 +1848,14 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
                         <Sparkles size={13} className="cpt-chip-icon" />
                         <span>Key Video Takeaways</span>
                       </button>
-                    </>
-                  )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          )}
+              )}
 
-          {/* CHAT STREAM */}
-          {activeSession && (
-            <div className="cpt-chat-stream">
+              {/* GENERAL CHAT STREAM */}
+              {activeSession && (
+                <div className="cpt-chat-stream">
               <div className="cpt-messages-container">
 
                 {/* Initial Prompt */}
@@ -2228,30 +2338,18 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
                   </div>
                 ))}
 
-                {/* Loading indicator */}
+                {/* Loading indicator with Live SSE StageTracker */}
                 {isGenerating && (
                   <div className="cpt-msg ai-msg">
-                    <div className={`cpt-ai-icon ${activeMode === 'cyber' ? 'cyber-icon' : (selectedModel === 'deepthink' ? 'deepthink-icon' : '')}`}>
-                      {activeMode === 'cyber' ? <ShieldAlert size={16} /> : (selectedModel === 'deepthink' ? <Brain size={16} /> : <Zap size={16} />)}
+                    <div className="cpt-ai-icon">
+                      <Zap size={16} />
                     </div>
-                    <div className="cpt-ai-content cpt-loading">
-                      {pipelineStepText ? (
-                        <div className="cpt-thinking-step">
-                          <Activity size={14} className="cpt-spin-slow" />
-                          <span>{pipelineStepText}</span>
-                        </div>
-                      ) : isThinking ? (
-                        <div className="cpt-thinking-step">
-                          <Brain size={14} className="cpt-spin-slow" />
-                          <span>{activeMode === 'cyber' ? 'Chorus Deepthink: Analyzing optical vectors & tamper signatures...' : 'Chorus Deepthink: Synthesizing multimodal video intelligence & reasoning...'}</span>
-                        </div>
-                      ) : (
-                        <div className="cpt-thinking-step">
-                          <Zap size={14} />
-                          <span>Chorus Flash: Executing pipeline analysis...</span>
-                        </div>
-                      )}
-                      <div className="cpt-dot-flashing"></div>
+                    <div className="cpt-ai-content cpt-loading" style={{ width: '100%', maxWidth: '680px' }}>
+                      <StageTracker
+                        stages={activeRunStages}
+                        currentStage={activeRunCurrentStage}
+                        progress={activeRunProgress}
+                      />
                     </div>
                   </div>
                 )}
@@ -2260,33 +2358,41 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
               </div>
             </div>
           )}
+            </>
+          )}
 
           {/* Chat Input permanently pinned to bottom */}
-          <div className="cpt-bottom-input-container">
-            <ChatInput
-              centered={false}
-              promptText={promptText}
-              setPromptText={setPromptText}
-              attachedFile={attachedFile}
-              setAttachedFile={setAttachedFile}
-              attachedLiveStream={attachedLiveStream}
-              setAttachedLiveStream={setAttachedLiveStream}
-              activeStreamConfig={activeStreamConfig}
-              setActiveStreamConfig={setActiveStreamConfig}
-              activeMode={activeMode}
-              selectedModel={selectedModel}
-              switchModel={switchModel}
-              modelDropdownOpen={modelDropdownOpen}
-              setModelDropdownOpen={setModelDropdownOpen}
-              isVoiceActive={isVoiceActive}
-              setIsVoiceActive={setIsVoiceActive}
-              handleSend={handleSend}
-              fileInputRef={fileInputRef}
-              textareaRef={textareaRef}
-              modelDropdownRef={modelDropdownRef}
-              onOpenRtspModal={() => setShowRtspModal(true)}
-            />
-          </div>
+          {activeMode === 'general' ? (
+            <div className="cpt-bottom-input-container">
+              <ChatInput
+                centered={false}
+                promptText={promptText}
+                setPromptText={setPromptText}
+                attachedFile={attachedFile}
+                setAttachedFile={setAttachedFile}
+                attachedLiveStream={attachedLiveStream}
+                setAttachedLiveStream={setAttachedLiveStream}
+                activeStreamConfig={activeStreamConfig}
+                setActiveStreamConfig={setActiveStreamConfig}
+                activeMode={activeMode}
+                selectedModel={selectedModel}
+                switchModel={switchModel}
+                modelDropdownOpen={modelDropdownOpen}
+                setModelDropdownOpen={setModelDropdownOpen}
+                isVoiceActive={isVoiceActive}
+                setIsVoiceActive={setIsVoiceActive}
+                handleSend={handleSend}
+                fileInputRef={fileInputRef}
+                textareaRef={textareaRef}
+                modelDropdownRef={modelDropdownRef}
+                onOpenRtspModal={() => setShowRtspModal(true)}
+              />
+            </div>
+          ) : (
+            <div className="cpt-bottom-input-container" style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px' }}>
+              <span>Cyber Mode console entry points are available in the console cards above.</span>
+            </div>
+          )}
         </div>
       </main>
     </div>
