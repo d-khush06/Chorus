@@ -97,7 +97,7 @@ describe('Button', () => {
     render(<Button variant="primary">Primary</Button>);
     const btn = screen.getByRole('button', { name: 'Primary' });
     expect(btn).toHaveClass('bg-accent');
-    expect(btn).toHaveClass('text-white');
+    expect(btn).toHaveClass('text-[var(--btn-label)]');
   });
 
   it('renders with correct size classes', () => {

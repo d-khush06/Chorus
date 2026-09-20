@@ -36,14 +36,12 @@
 
 .mode-toggle-slider--general {
   transform: translateX(0);
-  background: linear-gradient(135deg, var(--color-primary), var(--color-purple));
-  box-shadow: 0 2px 12px var(--color-primary-glow);
+  background: var(--accent);
 }
 
 .mode-toggle-slider--cyber {
   transform: translateX(calc(100% + 3px));
-  background: linear-gradient(135deg, #7f1d1d, var(--color-cyber));
-  box-shadow: 0 2px 12px var(--color-cyber-glow);
+  background: var(--accent);
 }
 
 .mode-toggle-btn {

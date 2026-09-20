@@ -4,9 +4,9 @@
  */
 
 export const DEFAULT_THRESHOLDS = {
-  frame: 0.85,
-  video: 0.70,
-  ai_generation: 0.65
+  frame: 0.50,
+  video: 0.30,
+  ai_generation: 0.50
 };
 
 export function computeVerdict(payload = {}) {
@@ -59,7 +59,7 @@ export function computeVerdict(payload = {}) {
   } else if (manip.verdict === 'FLAGGED' || videoScore >= thresholds.video) {
     sbiStatus = 'fail';
     sbiDetails = `Facial manipulation detected (score: ${videoScore.toFixed(3)}, threshold: ${thresholds.video.toFixed(2)}).`;
-  } else if (videoScore >= 0.50) {
+  } else if (videoScore >= (thresholds.video * 0.70)) {
     sbiStatus = 'warning';
     sbiDetails = `Borderline facial inconsistency detected (score: ${videoScore.toFixed(3)}, threshold: ${thresholds.video.toFixed(2)}).`;
   }
@@ -92,7 +92,7 @@ export function computeVerdict(payload = {}) {
   } else if (isAiFlagged) {
     aiStatus = 'fail';
     aiDetails = `AI-generation screening positive (score: ${aiScore.toFixed(3)}, threshold: ${thresholds.ai_generation.toFixed(2)}). Synthetic generation traces detected.`;
-  } else if (aiScore >= 0.45) {
+  } else if (aiScore >= (thresholds.ai_generation * 0.70)) {
     aiStatus = 'warning';
     aiDetails = `Borderline synthetic diffusion markers detected (score: ${aiScore.toFixed(3)}, threshold: ${thresholds.ai_generation.toFixed(2)}).`;
   } else if (!payload.ai_generation_result) {

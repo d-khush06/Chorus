@@ -13,11 +13,11 @@ export const Button = forwardRef(function Button({
   ...props
 }, ref) {
   const variants = {
-    primary: 'bg-accent text-white border-accent hover:bg-accent/90 focus:ring-accent',
+    primary: 'bg-accent text-[var(--btn-label)] border-accent hover:opacity-90 focus:ring-accent font-semibold',
     secondary: 'bg-surface text-primary border border-default hover:border-accent/50 focus:ring-accent',
     outline: 'bg-transparent text-primary border border-default hover:bg-surface focus:ring-accent',
     ghost: 'bg-transparent text-primary border-transparent hover:bg-surface focus:ring-accent',
-    danger: 'bg-danger text-white border-danger hover:bg-danger/90 focus:ring-danger',
+    danger: 'bg-danger text-[var(--bg)] border-danger hover:opacity-90 focus:ring-danger font-semibold',
   };
 
   const sizes = {

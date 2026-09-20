@@ -2,30 +2,31 @@
   "pipeline_halted": false,
   "halt_reason": null,
   "halt_step": null,
-  "mode": "general",
+  "mode": "cyber",
   "source_type": "local_upload",
-  "source_uri": "C:\\Users\\DELL\\OneDrive\\Desktop\\sem5\\sem 5 video project\\backend\\uploads\\upload-1789751887991-313251283.mp4",
-  "user_question": "\"Focus strictly on what is physically happening in the video: who is in the video, what they are doing, their actions, movement, setting, objects, and any visible writing or text. Do NOT discuss metadata, video duration, frame rates, keyframes, or technical pipeline concepts. Do NOT say 'Scene 0', 'Monitored Window', 'keyframes', or 'multimodal evidence'.\"",
+  "source_uri": "20260817181437823.mp4",
+  "user_question": "Summarize what happens in this video.",
   "routing_decision": {
-    "mode": "general",
+    "mode": "cyber",
     "tool_calls": [
       "scene_segmentation",
       "perception_agent",
       "asr_agent",
+      "acoustic_event_detection",
+      "geo_estimation_agent",
+      "alert_system",
       "review_queue",
       "fusion_agent",
       "domain_output"
     ],
     "excluded": [
-      "geo_estimation_agent",
-      "face_reid_agent",
-      "alert_system"
+      "face_reid_agent"
     ],
     "reasoning_summary": "Rule-based routing (orchestrator model not available or fast mode requested).",
     "routing_method": "rule_based"
   },
-  "started_at": "2026-09-18T17:18:08.294014Z",
-  "completed_at": "2026-09-18T17:20:47.206957Z",
+  "started_at": "2026-09-20T16:26:11.821753Z",
+  "completed_at": "2026-09-20T16:26:50.453942Z",
   "duplication_result": null,
   "quality_gate_result": {
     "overall_verdict": "PASS",
@@ -95,11 +96,11 @@
         "end_seconds": 21.6
       }
     ],
-    "detector_used": "content",
+    "detector_used": "adaptive",
     "source_type": "local_upload"
   },
   "key_features": {
-    "video_title": "upload-1789751887991-313251283.mp4",
+    "video_title": "20260817181437823.mp4",
     "video_id": "",
     "playlist_context": "",
     "duration_seconds": 21.6,
@@ -124,254 +125,84 @@
       "00:18 (Point 7)",
       "00:21 (Point 8)"
     ],
-    "audio_transcript": "t take come here",
-    "audio_language": "en",
-    "audio_word_count": 4,
+    "audio_transcript": "",
+    "audio_language": "unknown",
+    "audio_word_count": 0,
     "ai_generated_flag": true,
     "deepfake_flag": true,
     "manipulation_verdict": "FLAGGED",
     "key_features_summary": [
-      "Title: upload-1789751887991-313251283.mp4",
+      "Title: 20260817181437823.mp4",
       "Technical: 21.6s | 2304x1296 @ 25.0fps",
       "Structure: 1 distinct scenes detected",
       "Sampled Timestamps: 00:00 (Point 1), 00:03 (Point 2), 00:06 (Point 3), 00:09 (Point 4), 00:12 (Point 5), 00:15 (Point 6), 00:18 (Point 7), 00:21 (Point 8)",
-      "Audio Speech: 4 words in en",
       "Forensics: Synthetic/Deepfake anomaly flagged"
     ]
   },
-  "vl_output": "A man wearing a black shirt and light-colored pants walks into a room filled with desks and chairs. He moves from one side of the room to the other, passing by a computer monitor and keyboard on a desk. The room appears to be a computer lab or office space. There are several blue chairs arranged around the desks, and a large window with glass panels can be seen in the background. The man exits the room through a door on the right side of the frame.",
-  "asr_result": {
-    "language": "en",
-    "language_confidence": 0.78,
-    "segments": [
-      {
-        "segment_id": 0,
-        "start_s": 0.0,
-        "end_s": 3.8,
-        "text": "t",
-        "avg_logprob": -4.0429,
-        "no_speech_prob": 0.4995
-      },
-      {
-        "segment_id": 1,
-        "start_s": 3.8,
-        "end_s": 11.94,
-        "text": "take",
-        "avg_logprob": -4.0429,
-        "no_speech_prob": 0.4995
-      },
-      {
-        "segment_id": 2,
-        "start_s": 11.94,
-        "end_s": 13.52,
-        "text": "come",
-        "avg_logprob": -4.0429,
-        "no_speech_prob": 0.4995
-      },
-      {
-        "segment_id": 3,
-        "start_s": 13.52,
-        "end_s": 24.52,
-        "text": "here",
-        "avg_logprob": -4.0429,
-        "no_speech_prob": 0.4995
-      }
-    ],
-    "full_transcript": "t take come here",
-    "word_count": 4,
-    "duration_s": 24.52,
-    "model_used": "whisper-base",
-    "started_at": "2026-09-18T17:18:15.037115Z",
-    "completed_at": "2026-09-18T17:18:23.197610Z",
-    "error": null
-  },
-  "fusion_result": {
-    "fused_timeline": [
-      {
-        "scene_id": 0,
-        "start_s": 0.0,
-        "end_s": 21.6,
-        "vl_description": "A man wearing a black shirt and light-colored pants walks into a room filled with desks and chairs. He moves from one side of the room to the other, passing by a computer monitor and keyboard on a desk. The room appears to be a computer lab or office space. There are several blue chairs arranged around the desks, and a large window with glass panels can be seen in the background. The man exits the room through a door on the right side of the frame.",
-        "asr_segments": [
-          {
-            "segment_id": 0,
-            "start_s": 0.0,
-            "end_s": 3.8,
-            "text": "t",
-            "avg_logprob": -4.0429,
-            "no_speech_prob": 0.4995
-          },
-          {
-            "segment_id": 1,
-            "start_s": 3.8,
-            "end_s": 11.94,
-            "text": "take",
-            "avg_logprob": -4.0429,
-            "no_speech_prob": 0.4995
-          },
-          {
-            "segment_id": 2,
-            "start_s": 11.94,
-            "end_s": 13.52,
-            "text": "come",
-            "avg_logprob": -4.0429,
-            "no_speech_prob": 0.4995
-          },
-          {
-            "segment_id": 3,
-            "start_s": 13.52,
-            "end_s": 24.52,
-            "text": "here",
-            "avg_logprob": -4.0429,
-            "no_speech_prob": 0.4995
-          }
-        ],
-        "asr_text": "t take come here",
-        "acoustic_events": [],
-        "scene_tags": [
-          "speech_detected",
-          "persons_visible",
-          "indoor_scene"
-        ]
-      }
-    ],
-    "full_vl_output": "A man wearing a black shirt and light-colored pants walks into a room filled with desks and chairs. He moves from one side of the room to the other, passing by a computer monitor and keyboard on a desk. The room appears to be a computer lab or office space. There are several blue chairs arranged around the desks, and a large window with glass panels can be seen in the background. The man exits the room through a door on the right side of the frame.",
-    "full_transcript": "t take come here",
+  "vl_output": null,
+  "asr_result": null,
+  "fusion_result": null,
+  "domain_output": null,
+  "acoustic_result": {
+    "events": [],
     "summary": {
-      "total_scenes": 1,
-      "total_asr_segments": 4,
-      "total_words": 4,
-      "has_speech": true,
-      "has_vl_output": true,
-      "language": "en",
-      "language_confidence": 0.78,
-      "duration_s": 21.6,
-      "mode": "general",
-      "deepfake_flag": true,
-      "ai_generated_flag": true
+      "total_events": 0,
+      "by_type": {},
+      "highest_severity": null,
+      "audio_duration_s": 21.504
     },
-    "metadata": {
-      "video_duration_seconds": null,
-      "verdict": "FLAGGED",
-      "frames_analyzed": 0,
-      "faces_detected": 0,
-      "detector_error": true
-    },
-    "deepfake_flag": true,
-    "ai_generated_flag": true,
-    "source_type": "local_upload",
-    "source_uri": "C:\\Users\\DELL\\OneDrive\\Desktop\\sem5\\sem 5 video project\\backend\\uploads\\upload-1789751887991-313251283.mp4",
-    "fused_at": "2026-09-18T17:19:27.779955Z",
-    "error": null,
-    "verification_result": {
-      "reverse_search": {
-        "error": true,
-        "reason": "Base64-encoded images cannot be sent to the Google reverse-image API without a public URL. Upload the image to a temporary host first and pass the resulting URL as 'image'.",
-        "case_id": "bf5fd1d00733f524"
-      },
-      "upload_history": null,
-      "fact_check": null,
-      "web_search": {
-        "error": true,
-        "reason": "Client error HTTP 403: {\"message\":\"Unauthorized. Sign up for a free account.\",\"statusCode\":403}",
-        "case_id": "bf5fd1d00733f524"
-      }
-    }
-  },
-  "domain_output": {
-    "enrichment": {
-      "raw_output": "<tool_call>\n{\"name\": \"context_enrichment\", \"arguments\": {\"video_id\": \"upload-1789751887991-313251283\", \"visual_description\": \"A man wearing a black shirt and light-colored pants walks into a room filled with desks and chairs. He moves from one side of the room to the other, passing by a computer monitor and keyboard on a desk. The room appears to be a computer lab or office space. There are several blue chairs arranged around the desks, and a large window with glass panels can be seen in the background. The man exits the room through a door on the right side of the frame.\", \"speech_transcript\": \"t take come here\", \"scene_timeline\": \"[Scene 0] 0.0s–21.6s | Tags: speech_detected, persons_visible, indoor_scene\"}}\n</tool_call>"
-    },
-    "analytics": {
-      "statistics": {
-        "duration_s": 21.6,
-        "total_scenes": 1,
-        "speech_coverage_pct": 100,
-        "total_words_spoken": 4,
-        "detected_language": "en",
-        "scenes_with_persons": 1,
-        "scenes_with_vehicles": 0,
-        "scenes_with_text_on_screen": 0,
-        "deepfake_flagged": true,
-        "ai_generated_flagged": true
-      },
-      "most_important_moment": {
-        "scene_id": 0,
-        "start_s": 0.0,
-        "end_s": 21.6,
-        "reason": "The entire scene depicts a man walking into a room, moving around, and exiting it, which is the main action and setting of the video."
-      },
-      "user_question_answer": "In the video, a man wearing a black shirt and light-colored pants walks into a room filled with desks and chairs. He moves from one side of the room to the other, passing by a computer monitor and keyboard on a desk. The room appears to be a computer lab or office space. There are several blue chairs arranged around the desks, and a large window with glass panels can be seen in the background. The man exits the room through a door on the right side of the frame. No other people or vehicles are visible, and there is no visible writing or text on screen."
-    },
-    "final_output": {
-      "executive_summary": "A man wearing a black shirt and light-colored pants walks into a room filled with desks and chairs, moves from one side to the other, passes by a computer monitor and keyboard, and then exits the room through a door on the right side.",
-      "detailed_analysis": [
-        "The man enters the room, walks across it, and exits, indicating a short journey within the space.",
-        "The room contains desks, chairs, and a computer setup, suggesting an office or study environment.",
-        "No writing or text is visible in the video, focusing solely on visual actions.",
-        "The man's movements cover approximately 21.6 seconds, showing continuous motion.",
-        "The room setting is consistent throughout, with no changes in lighting or background."
-      ],
-      "timeline_highlights": [
-        {
-          "time": "0:00-0:12",
-          "event": "Man enters the room and begins walking towards the center."
-        },
-        {
-          "time": "0:12-0:21",
-          "event": "Man walks past the computer monitor and keyboard, then continues to the opposite side."
-        },
-        {
-          "time": "0:21-0:21.6",
-          "event": "Man exits the room through a door on the right side."
-        }
-      ],
-      "content_flags": {
-        "contains_sensitive_content": false,
-        "contains_faces": true,
-        "contains_audio": false,
-        "manipulation_detected": true
-      },
-      "recommendations": [
-        "Consider verifying the authenticity of the video due to the deepfake flag; further investigation may be needed."
-      ]
-    },
-    "mode": "general",
-    "user_question": "\"Focus strictly on what is physically happening in the video: who is in the video, what they are doing, their actions, movement, setting, objects, and any visible writing or text. Do NOT discuss metadata, video duration, frame rates, keyframes, or technical pipeline concepts. Do NOT say 'Scene 0', 'Monitored Window', 'keyframes', or 'multimodal evidence'.\"",
-    "generated_at": "2026-09-18T17:19:27.780958Z",
+    "backend": "heuristic",
+    "model_used": "heuristic-dsp",
+    "duration_s": 21.504,
+    "started_at": "2026-09-20T16:26:48.499584Z",
+    "completed_at": "2026-09-20T16:26:48.547686Z",
     "error": null
   },
-  "acoustic_result": null,
-  "geo_result": null,
+  "geo_result": {
+    "status": "unavailable",
+    "gps": null,
+    "top_predictions": [],
+    "per_frame": [],
+    "frames_analyzed": 0,
+    "model_used": null,
+    "started_at": "2026-09-20T16:26:48.549356Z",
+    "completed_at": null,
+    "error": "GeoCLIP not available. Install: pip install git+https://github.com/VicenteVivanco/GeoCLIP.git"
+  },
   "face_reid_result": null,
   "alert_result": null,
-  "review_queue_result": {
-    "item_id": "83bc023e30ab",
-    "created_at": "2026-09-18T17:19:26.874279Z",
-    "source_uri": "C:\\Users\\DELL\\OneDrive\\Desktop\\sem5\\sem 5 video project\\backend\\uploads\\upload-1789751887991-313251283.mp4",
-    "mode": "general",
-    "step": "pipeline_review",
-    "reason": "Deepfake/manipulation flagged",
-    "severity": "HIGH",
-    "confidence": 0.5,
-    "status": "OPEN",
-    "recommended_action": "Human analyst review required.",
-    "payload": {}
-  },
+  "review_queue_result": null,
   "verification_result": {
     "reverse_search": {
       "error": true,
       "reason": "Base64-encoded images cannot be sent to the Google reverse-image API without a public URL. Upload the image to a temporary host first and pass the resulting URL as 'image'.",
-      "case_id": "bf5fd1d00733f524"
+      "case_id": "d80fbee66bf70936"
     },
     "upload_history": null,
     "fact_check": null,
     "web_search": {
       "error": true,
       "reason": "Client error HTTP 403: {\"message\":\"Unauthorized. Sign up for a free account.\",\"statusCode\":403}",
-      "case_id": "bf5fd1d00733f524"
+      "case_id": "d80fbee66bf70936"
     }
   },
   "playlist_manifest": null,
-  "analyzed_video_info": null
+  "analyzed_video_info": null,
+  "ai_generation_result": {
+    "verdict": "NO_STRONG_EVIDENCE_OF_AI",
+    "ai_confidence": 0.0,
+    "review_required": false,
+    "is_ai_generated": false,
+    "signals": {
+      "motion_compensated_residual": 8.229,
+      "detail_measure": 1232.757,
+      "frames_analysed": 12
+    },
+    "limitations": [
+      "This is a screening result, not proof of provenance.",
+      "YouTube and other platforms re-encode video; codec artifacts cannot prove a video is real.",
+      "CCTV blur, low light, compression, and low frame rate are expected and are not AI evidence."
+    ],
+    "processing_time_seconds": 9.055
+  }
 }

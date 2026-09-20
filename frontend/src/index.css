@@ -22,8 +22,18 @@
 html {
   height: 100%;
   font-size: 14px;
+  background-color: var(--bg);
+  color: var(--text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 body {
@@ -39,6 +49,8 @@ body {
 
 #root {
   height: 100%;
+  background-color: var(--bg);
+  color: var(--text);
 }
 
 .global-app-container {

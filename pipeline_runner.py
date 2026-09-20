@@ -935,6 +935,7 @@ def run_full_pipeline(
     }
 
     # ── Resolve video path (Universal Ingestion) ───────────────────────────
+    _emit_stage_start("source_ingestion")
     local_video_path = video_path
 
     if url and not local_video_path:
@@ -947,6 +948,7 @@ def run_full_pipeline(
                 print(f"  [Pipeline] ✅ Ingest complete: {local_video_path}", flush=True)
         except Exception as exc:
             print(f"  [Pipeline] ⚠️ URL auto-ingest warning: {exc}. Proceeding with stream metadata.", flush=True)
+    _emit_stage_complete("source_ingestion", {"path": local_video_path or url or "source_stream"})
 
     # ── Step 3: Duplication Check ──────────────────────────────────────────
     _emit_stage_start("duplication_check")

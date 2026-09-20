@@ -51,7 +51,7 @@
 
 .btn-primary {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--text);
   box-shadow: 0 2px 8px var(--color-primary-glow);
 }
 .btn-primary:hover:not(:disabled) {
@@ -63,7 +63,7 @@
 
 .btn-cyber {
   background: var(--color-cyber);
-  color: #fff;
+  color: var(--text);
   box-shadow: 0 2px 8px var(--color-cyber-glow);
 }
 .btn-cyber:hover:not(:disabled) {
@@ -75,7 +75,7 @@
 
 .btn-success {
   background: var(--color-success);
-  color: #fff;
+  color: var(--text);
   box-shadow: 0 2px 8px var(--color-success-glow);
 }
 .btn-success:hover:not(:disabled) {
@@ -125,7 +125,7 @@
 .btn-danger:hover:not(:disabled) {
   background: var(--color-cyber-dim);
   border-color: var(--color-cyber);
-  color: #fff;
+  color: var(--text);
 }
 
 /* ─── Sizes ─── */

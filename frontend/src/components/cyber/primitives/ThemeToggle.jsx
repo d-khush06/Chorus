@@ -55,7 +55,12 @@ export function ThemeToggle({ className = '', showLabel = false, ...props }) {
     } catch (e) {
       console.warn('Unable to persist theme to localStorage', e);
     }
+    document.documentElement.classList.add('theme-transition');
     document.documentElement.setAttribute('data-theme', newTheme);
+    document.documentElement.style.colorScheme = newTheme;
+    setTimeout(() => {
+      document.documentElement.classList.remove('theme-transition');
+    }, 250);
   }, [theme]);
 
   if (!mounted) {
@@ -152,7 +157,12 @@ export function useTheme() {
     } catch (e) {
       console.warn('Failed to save theme in localStorage', e);
     }
+    document.documentElement.classList.add('theme-transition');
     document.documentElement.setAttribute('data-theme', newTheme);
+    document.documentElement.style.colorScheme = newTheme;
+    setTimeout(() => {
+      document.documentElement.classList.remove('theme-transition');
+    }, 250);
   }, [theme]);
 
   return { theme, toggleTheme, setTheme: toggleTheme, mounted };

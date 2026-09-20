@@ -13,14 +13,9 @@
   animation: orb-pulse 1.8s ease-in-out infinite;
 }
 
-.aresults-processing__orb--general {
-  background: radial-gradient(circle at 35% 35%, #818cf8, #6366f1, #4338ca);
-  box-shadow: 0 0 40px rgba(99,102,241,0.5), 0 0 80px rgba(99,102,241,0.2);
-}
-
+.aresults-processing__orb--general,
 .aresults-processing__orb--cyber {
-  background: radial-gradient(circle at 35% 35%, #f87171, #dc2626, #991b1b);
-  box-shadow: 0 0 40px rgba(220,38,38,0.5), 0 0 80px rgba(220,38,38,0.2);
+  background: var(--accent);
 }
 
 @keyframes orb-pulse {
@@ -103,12 +98,9 @@
   transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.aresults-processing__progress-fill--general {
-  background: linear-gradient(90deg, #6366f1, #8b5cf6);
-}
-
+.aresults-processing__progress-fill--general,
 .aresults-processing__progress-fill--cyber {
-  background: linear-gradient(90deg, #991b1b, #ef4444);
+  background: var(--accent);
 }
 
 /* Results container */

@@ -515,4 +515,29 @@ router.get('/review-queue', protect, (req, res) => {
   }
 });
 
+// ============================================================
+// 8. TRACE STATUS (GET /api/cyber/trace/status)
+// Governance requirements, biometric consent, and geo status
+// ============================================================
+router.get('/trace/status', protect, (req, res) => {
+  res.json({
+    success: true,
+    status: 'gated',
+    face_reid: {
+      available: false,
+      governance_approved: false,
+      gate_status: 'RESTRICTED',
+      reason: 'Biometric facial re-identification requires verified jurisdictional legal authorization and organizational consent under Policy G-14 (Facial Recognition Governance).'
+    },
+    geo_estimation: {
+      available: false,
+      governance_approved: false,
+      gate_status: 'RESTRICTED',
+      reason: 'High-resolution geographic localization requires verified satellite imagery licensing and geodetic coordinate cross-matching certification.'
+    },
+    action_required: 'Compliance Officer digital signature and authorization ticket required to activate biometric extraction pipeline.',
+    compliance_doc: 'CHORUS-GOV-POLICY-G14.pdf'
+  });
+});
+
 module.exports = router;

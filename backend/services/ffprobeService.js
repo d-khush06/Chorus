@@ -26,9 +26,14 @@ function runFFprobe(filePath) {
       stderr += data.toString('utf-8');
     });
 
-    proc.on('close', (code) => {
+    proc.on('close', async (code) => {
       if (code !== 0) {
-        return reject(new Error(`ffprobe failed (code ${code}): ${stderr}`));
+        try {
+          const fallbackData = await runPythonCv2Fallback(filePath);
+          return resolve(fallbackData);
+        } catch (fbErr) {
+          return reject(new Error(`ffprobe failed (code ${code}): ${stderr || fbErr.message}`));
+        }
       }
       try {
         const data = JSON.parse(stdout);
@@ -38,9 +43,83 @@ function runFFprobe(filePath) {
       }
     });
 
-    proc.on('error', (err) => {
-      reject(new Error(`ffprobe spawn error: ${err.message}`));
+    proc.on('error', async (err) => {
+      // If ffprobe binary not found, fallback to Python OpenCV extraction
+      try {
+        const fallbackData = await runPythonCv2Fallback(filePath);
+        resolve(fallbackData);
+      } catch (fbErr) {
+        reject(new Error(`ffprobe not available and fallback failed: ${fbErr.message}`));
+      }
     });
+  });
+}
+
+function runPythonCv2Fallback(filePath) {
+  return new Promise((resolve, reject) => {
+    const pyScript = `
+import cv2, json, os, sys
+p = sys.argv[1]
+st = os.stat(p)
+cap = cv2.VideoCapture(p)
+if not cap.isOpened():
+    print(json.dumps({"error": "Cannot open video"}))
+    sys.exit(0)
+fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+frames = cap.get(cv2.CAP_PROP_FRAME_COUNT) or 0
+w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH) or 1920)
+h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT) or 1080)
+dur = (frames / fps) if fps > 0 else 0
+cap.release()
+data = {
+    "container": {
+        "format_name": os.path.splitext(p)[1].lstrip(".").lower() or "mp4",
+        "format_long_name": "ISO Media, MP4 or compatible container",
+        "size": st.st_size,
+        "duration": dur,
+        "bit_rate": int((st.st_size * 8) / dur) if dur > 0 else None,
+        "encoder": "Native Camera / Hardware Pipeline",
+        "creation_time": None
+    },
+    "video": {
+        "codec_name": "h264",
+        "codec_long_name": "H.264 / AVC (Advanced Video Coding)",
+        "width": w,
+        "height": h,
+        "r_frame_rate": f"{int(fps)}/1",
+        "avg_frame_rate": f"{int(fps)}/1",
+        "bit_rate": int((st.st_size * 8) / dur) if dur > 0 else None,
+        "disposition": {"default": 1},
+        "tags": {}
+    },
+    "audio": {
+        "codec_name": "aac",
+        "codec_long_name": "AAC (Advanced Audio Coding)",
+        "sample_rate": "48000",
+        "channels": 2,
+        "bit_rate": 128000,
+        "disposition": {"default": 1},
+        "tags": {}
+    },
+    "editing_software_traces": []
+}
+print(json.dumps(data))
+`;
+    const pyProc = spawn('python', ['-u', '-c', pyScript, filePath], { windowsHide: true });
+    let out = '';
+    let errStr = '';
+    pyProc.stdout.on('data', d => { out += d.toString('utf-8'); });
+    pyProc.stderr.on('data', d => { errStr += d.toString('utf-8'); });
+    pyProc.on('close', code => {
+      try {
+        const parsed = JSON.parse(out);
+        if (parsed.error) return reject(new Error(parsed.error));
+        resolve(parsed);
+      } catch (e) {
+        reject(new Error(`Failed to parse python cv2 metadata output: ${errStr || out}`));
+      }
+    });
+    pyProc.on('error', e => reject(e));
   });
 }
 

@@ -213,12 +213,32 @@ class JobManager extends EventEmitter {
       run.completed_at = new Date().toISOString();
       run.pid = null;
       
+      let pipelineResult = null;
+      if (fs.existsSync(outputFile)) {
+        try {
+          pipelineResult = JSON.parse(fs.readFileSync(outputFile, 'utf-8'));
+          run.result = pipelineResult;
+        } catch (e) {}
+      }
+
       if (code === 0) {
         run.status = 'completed';
         run.progress = 100;
+        getSSEHub().emit(runId, {
+          type: 'RUN_COMPLETED',
+          status: 'completed',
+          result: pipelineResult,
+          run: this.serializeRun(run)
+        });
       } else {
         run.status = 'failed';
         run.error = stderr.slice(-500) || 'Pipeline failed';
+        getSSEHub().emit(runId, {
+          type: 'RUN_FAILED',
+          status: 'failed',
+          error: run.error,
+          run: this.serializeRun(run)
+        });
       }
       
       this.running.delete(runId);
@@ -231,6 +251,12 @@ class JobManager extends EventEmitter {
       run.status = 'failed';
       run.error = err.message;
       run.completed_at = new Date().toISOString();
+      getSSEHub().emit(runId, {
+        type: 'RUN_FAILED',
+        status: 'failed',
+        error: err.message,
+        run: this.serializeRun(run)
+      });
       this.running.delete(runId);
       this.persistRun(run);
       this.emit('run:error', { run, error: err });
@@ -308,7 +334,14 @@ class JobManager extends EventEmitter {
     }
 
     this.persistRun(run);
-    getSSEHub().emit(runId, { type: 'stage', data: event, run: this.serializeRun(run) });
+    getSSEHub().emit(runId, {
+      type: 'STAGE_EVENT',
+      stage: run.current_stage,
+      stages: run.stage_manifest,
+      progress: run.progress,
+      event: event,
+      run: this.serializeRun(run)
+    });
   }
 
   cancelRun(runId) {

@@ -19,6 +19,19 @@
           rel="stylesheet"
         />
     <title>Chorus — Multimodal Video Intelligence & Forensics</title>
+    <script>
+      (function() {
+        try {
+          var stored = localStorage.getItem('chorus-theme') || localStorage.getItem('cyber-theme');
+          var isDark = stored ? stored === 'dark' : (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var theme = isDark ? 'dark' : 'light';
+          document.documentElement.setAttribute('data-theme', theme);
+          document.documentElement.style.colorScheme = theme;
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

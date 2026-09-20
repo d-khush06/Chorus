@@ -213,7 +213,7 @@
 
 .sidebar-signout-btn:hover {
   background: var(--color-cyber-dim);
-  color: #fff;
+  color: var(--text);
   border-color: transparent;
 }
 

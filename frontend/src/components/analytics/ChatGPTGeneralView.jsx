@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import FusedEventCard from '../FusedEventCard.jsx';
 import UserProfileModal from '../ui/UserProfileModal.jsx';
 import AppSettingsModal from '../ui/AppSettingsModal.jsx';
@@ -9,6 +9,7 @@ import AuthContext from '../../context/AuthContext';
 import { analyzeVideo, chatAboutVideo, fetchCases } from '../../data/api.js';
 import { ThemeToggle } from '../cyber/primitives/ThemeToggle';
 import { StageTracker } from '../cyber/StageTracker';
+import { CyberLandingPage } from '../cyber/CyberLayout.jsx';
 import './ChatGPTGeneralView.css';
 import {
   Search, PanelLeft, Plus, X, Sparkles, Brain, Mic, AudioLines,
@@ -22,154 +23,7 @@ import {
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-const MOCK_DEMO_HISTORY = [
-  {
-    id: 'hist-1',
-    title: 'CR-889 — CCTV Perimeter Tamper Audit',
-    mode: 'cyber',
-    timestamp: 'Today',
-    isPinned: true,
-    videoName: 'CCTV_Perimeter_Sector4.mp4',
-    prompt: 'Audit CCTV_Perimeter_Sector4.mp4 for video manipulation, frame splices, and timestamp alteration.',
-    cyberData: {
-      threatScore: 87,
-      threatLevel: 'HIGH',
-      classification: 'Unauthorized Manipulation & Frame Splicing',
-      anomalies: [
-        { time: '00:14 – 00:18', type: 'Optical Flow Discontinuity', severity: 'CRITICAL', desc: 'Synthetic background loop injected to mask perimeter gate activity.' },
-        { time: '00:14', type: 'I-Frame Splicing', severity: 'HIGH', desc: 'Compression quantization jump detected between frame 420 and 421.' },
-        { time: '00:00 – 00:45', type: 'Audio Desynchronization', severity: 'MEDIUM', desc: 'Audio track zeroed out prior to file container creation.' }
-      ],
-      integrityStatus: 'Tampered / Compromised',
-      hashMatch: 'Mismatch (SHA-256 diverges from camera ledger)',
-      mitigationActions: [
-        'Flag segment 00:14–00:18 for cryptographic preservation.',
-        'Cross-reference badge swipe access logs for Sector 4.',
-        'Notify physical security operations center.'
-      ]
-    },
-    messages: []
-  },
-  {
-    id: 'hist-live-1',
-    title: 'Live RTSP — Perimeter Gate Sector 4',
-    mode: 'cyber',
-    timestamp: 'Today',
-    isPinned: true,
-    streamUrl: 'rtsp://cam-04.perimeter.internal:554/live',
-    prompt: 'Connect live RTSP stream from Sector 4 perimeter camera and monitor for real-time frame tampering and deepfakes.',
-    isLiveStream: true,
-    liveTelemetry: {
-      streamUrl: 'rtsp://cam-04.perimeter.internal:554/live',
-      resolution: '1920x1080 @ 29.97 FPS',
-      bitrate: '4.2 Mbps (H.264 / CBR)',
-      latency: '128ms (Low Latency TCP)',
-      bufferIntegrity: '30s Sliding Window — 0 dropped frames (100% Continuity)',
-      threatScore: 14,
-      threatLevel: 'LOW',
-      findings: [
-        { label: 'Optical Vector Continuity', status: 'Optimal', desc: 'Perimeter vector fields continuous across all keyframes.' },
-        { label: 'Neural Face Screening', status: 'Clean', desc: 'Facial boundary diffusion delta < 0.03 (no deepfake synthesis).' },
-        { label: 'I-Frame Cadence', status: 'Verified', desc: 'GOP structure stable at 30-frame intervals (1.00s cadence).' },
-        { label: 'Clock Synchronization', status: 'Verified', desc: 'PTS/DTS clocks aligned with hardware NTP server.' }
-      ]
-    },
-    messages: []
-  },
-  {
-    id: 'hist-2',
-    title: 'Executive Briefing Q3 — Revenue & Growth',
-    mode: 'general',
-    timestamp: 'Today',
-    isPinned: true,
-    videoName: 'Q3_Executive_Briefing.mp4',
-    prompt: 'Summarize the Q3 executive review video and highlight key financial metrics.',
-    summary: {
-      title: 'Q3 Executive Performance Briefing',
-      overview: 'Executive briefing on Q3 organizational milestones. Exceeded quarterly revenue benchmarks by 14.8% through accelerated enterprise adoption of Chorus Multimodal Video Intelligence.',
-      takeaways: [
-        { label: 'Revenue Growth', detail: '14.8% outperformance across all core commercial segments.' },
-        { label: 'Product Expansion', detail: 'Chorus Multimodal Intelligence active across 34 enterprise pilots.' }
-      ],
-      chapters: [
-        { time: '00:00 – 03:15', title: 'Executive Welcome', desc: 'CEO opening remarks and operational context.' },
-        { time: '03:15 – 09:40', title: 'Financial Metrics', desc: 'CFO review of margins, operating expenses, and ARR.' },
-        { time: '09:40 – 14:20', title: 'Product Roadmap', desc: 'Overview of multimodal video processing pipelines.' }
-      ],
-      dynamics: {
-        analyzedFrames: '25,800 frames @ 30fps',
-        engine: 'Chorus DeepVideo'
-      },
-      actionItems: [
-        'Distribute finalized Q3 financial packet to executive stakeholders.',
-        'Schedule follow-up engineering briefing on real-time stream decoding.'
-      ]
-    },
-    messages: []
-  },
-  {
-    id: 'hist-yt-1',
-    title: 'YouTube — State of Neural Video AI',
-    mode: 'general',
-    timestamp: 'Today',
-    isPinned: false,
-    youtubeUrl: 'https://youtube.com/watch?v=k3_X_09B7mU',
-    prompt: 'https://youtube.com/watch?v=k3_X_09B7mU Summarize this YouTube video into chapters and actionable takeaways.',
-    summary: {
-      title: 'State of Neural Video AI & Multimodal Intelligence',
-      sourceType: 'YouTube',
-      youtubeUrl: 'https://youtube.com/watch?v=k3_X_09B7mU',
-      overview: 'Technical breakdown of next-generation multimodal neural networks for video reasoning. Demonstrates real-time video summarization, spatial-temporal attention mechanisms, and zero-shot keyframe indexing.',
-      takeaways: [
-        { label: 'Spatial-Temporal Attention', detail: 'Reduces transformer inference latency by 42% on 4K streams.' },
-        { label: 'Keyframe Indexing', detail: 'Zero-shot tokenization enables instant search across 10,000+ video hours.' },
-        { label: 'Edge Deployment', detail: 'Runs quantized 8-bit model on edge appliances under 15W.' }
-      ],
-      chapters: [
-        { time: '00:00 – 02:40', title: 'Introduction & Transformer Bottlenecks', desc: 'Why standard LLMs struggle with 30fps temporal continuity.' },
-        { time: '02:40 – 07:15', title: 'Spatial-Temporal Attention Layers', desc: 'Decoupling spatial keyframes from temporal vectors.' },
-        { time: '07:15 – 11:50', title: 'Real-Time Summarization Pipeline', desc: 'How Chorus architecture extracts key chapters in milliseconds.' },
-        { time: '11:50 – 14:32', title: 'Benchmark Results & Next Steps', desc: 'Comparison against baseline models and open-source release roadmap.' }
-      ],
-      dynamics: {
-        analyzedFrames: '26,160 frames @ 30fps',
-        engine: 'Chorus Flash (YouTube Adapter)'
-      },
-      actionItems: [
-        'Evaluate spatial-temporal attention paper for internal pipeline integration.',
-        'Test 8-bit edge deployment benchmark on CCTV ingestion nodes.'
-      ]
-    },
-    messages: []
-  },
-  {
-    id: 'hist-3',
-    title: 'Synthetic Voice & Deepfake Screen',
-    mode: 'cyber',
-    timestamp: 'Yesterday',
-    isPinned: false,
-    videoName: 'Executive_Public_Address.mp4',
-    prompt: 'Verify authenticity of public address video. Check for neural face manipulation and synthetic audio cloning.',
-    cyberData: {
-      threatScore: 92,
-      threatLevel: 'CRITICAL',
-      classification: 'Generative Face Synthesis & Voice Cloning',
-      anomalies: [
-        { time: '00:04 – 00:38', type: 'Facial Boundary Blurring', severity: 'CRITICAL', desc: 'Deepfake diffusion boundary artifacts detected around jawline.' },
-        { time: '00:00 – 00:40', type: 'Acoustic Vocoder Artifacts', severity: 'HIGH', desc: 'Synthetic neural vocoder frequencies identified in >16kHz band.' }
-      ],
-      integrityStatus: 'Synthetic Media Detected',
-      hashMatch: 'Unregistered Source',
-      mitigationActions: [
-        'Tag media asset as synthetic deepfake in Evidence Registry.',
-        'Issue verified communication advisory.'
-      ]
-    },
-    messages: []
-  }
-];
-
-const INITIAL_HISTORY = import.meta.env.VITE_USE_MOCKS === 'true' ? MOCK_DEMO_HISTORY : [];
+const INITIAL_HISTORY = [];
 
 // FormattedMessageContent Component: Cleanly formats and renders text with zero raw asterisks, hashtags, or markdown artifacts.
 function FormattedMessageContent({ content, className = '' }) {
@@ -669,10 +523,11 @@ function ChatInput({
 
 export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout } = useContext(AuthContext);
 
-  // Active Mode: 'general' or 'cyber'
-  const [activeMode, setActiveMode] = useState('general');
+  // Active Mode driven by URL: /cyber -> 'cyber', otherwise 'general'
+  const activeMode = location.pathname.startsWith('/cyber') ? 'cyber' : 'general';
 
   const [history, setHistory] = useState(() => {
     try {
@@ -710,12 +565,12 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
   const [activeRunProgress, setActiveRunProgress] = useState(0);
 
   useEffect(() => {
-    fetchCases()
+    fetchCases(activeMode === 'cyber' ? 'cyber' : undefined)
       .then(data => {
         if (Array.isArray(data)) setCasesCount(data.length);
       })
       .catch(() => setCasesCount(0));
-  }, []);
+  }, [activeMode]);
 
   const [userAvatar, setUserAvatar] = useState(() => {
     try {
@@ -824,12 +679,16 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
       const found = history.find(h => h.id === activeSessionId);
       if (found) {
         setActiveSession(found);
-        if (found.mode) setActiveMode(found.mode);
+        if (found.mode === 'cyber' && !location.pathname.startsWith('/cyber')) {
+          navigate('/cyber');
+        } else if (found.mode !== 'cyber' && location.pathname.startsWith('/cyber')) {
+          navigate('/analytics');
+        }
       }
     } else {
       setActiveSession(null);
     }
-  }, [activeSessionId, history]);
+  }, [activeSessionId, history, location.pathname, navigate]);
 
   // Auto scroll to bottom
   useEffect(() => {
@@ -889,7 +748,6 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
   };
 
   const handleSwitchMode = (newMode) => {
-    setActiveMode(newMode);
     setActiveSessionId(null);
     setActiveSession(null);
     setPromptText('');
@@ -897,6 +755,11 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
     setAttachedLiveStream(null);
     setActiveStreamConfig(null);
     setIsStreamPaused(false);
+    if (newMode === 'cyber') {
+      navigate('/cyber');
+    } else {
+      navigate('/analytics');
+    }
   };
 
   const handleRtspConnect = (config) => {
@@ -1071,10 +934,13 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
               es.onmessage = (evt) => {
                 try {
                   const data = JSON.parse(evt.data);
-                  if (data.type === 'STAGE_EVENT') {
-                    if (data.stage) setActiveRunCurrentStage(data.stage);
-                    if (Array.isArray(data.stages)) setActiveRunStages(data.stages);
-                    if (data.progress !== undefined) setActiveRunProgress(data.progress);
+                  if (data.type === 'STAGE_EVENT' || data.type === 'stage') {
+                    const current = data.stage || data.run?.current_stage || (data.event?.type === 'start' ? data.event.stage : null);
+                    const stages = data.stages || data.run?.stage_manifest || (data.event?.type === 'manifest' ? data.event.stages : null);
+                    const progress = data.progress !== undefined ? data.progress : data.run?.progress;
+                    if (current) setActiveRunCurrentStage(current);
+                    if (Array.isArray(stages) && stages.length > 0) setActiveRunStages(stages);
+                    if (progress !== undefined) setActiveRunProgress(progress);
                   } else if (data.type === 'RUN_COMPLETED' || data.status === 'completed') {
                     if (data.result) apiResult = data.result;
                     cleanup();
@@ -1426,13 +1292,16 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
 
         {/* Brand & Toggle */}
         <div className="cpt-sidebar-header">
-          <div className="cpt-sidebar-brand" onClick={handleNewChat}>
-            <span className="cpt-brand-name">Chorus</span>
-            {activeMode === 'cyber' ? (
-              <span className="cpt-brand-badge cyber">CYBER</span>
-            ) : (
-              <span className="cpt-brand-badge">GENERAL</span>
-            )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ThemeToggle />
+            <div className="cpt-sidebar-brand" onClick={handleNewChat}>
+              <span className="cpt-brand-name">Chorus</span>
+              {activeMode === 'cyber' ? (
+                <span className="cpt-brand-badge cyber">CYBER</span>
+              ) : (
+                <span className="cpt-brand-badge">GENERAL</span>
+              )}
+            </div>
           </div>
           <div className="cpt-sidebar-header-actions">
             <button
@@ -1588,9 +1457,6 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
 
         {/* User Profile & Popover Menu */}
         <div className="cpt-sidebar-footer" ref={userMenuRef}>
-          <div style={{ padding: '8px 12px 10px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'center' }}>
-            <ThemeToggle showLabel />
-          </div>
           {userMenuOpen && (
             <div className="cpt-user-popover">
               <div 
@@ -1762,61 +1628,8 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
 
           {/* CYBER MODE CONSOLE ENTRY CARDS OR GENERAL CHAT */}
           {activeMode === 'cyber' ? (
-            <div className="cpt-cyber-hub">
-              <div className="cpt-cyber-hub-hero">
-                <h1 className="cpt-cyber-hub-title">Chorus Cyber Forensics</h1>
-                <p className="cpt-cyber-hub-subtitle">
-                  Real-time camera surveillance, multi-stage evidentiary tampering audits, and subject trace forensics. Select a dedicated console to begin.
-                </p>
-              </div>
-
-              <div className="cpt-cyber-cards-grid">
-                <div className="cpt-cyber-card" onClick={() => navigate('/cyber/live')}>
-                  <div className="cpt-cyber-card-icon">
-                    <Cctv size={32} />
-                  </div>
-                  <h3 className="cpt-cyber-card-title">Live Watch</h3>
-                  <p className="cpt-cyber-card-desc">
-                    Real-time RTSP stream ingest, 30s sliding chunk analysis, optical flow vector continuity, and live agent standing watch rules.
-                  </p>
-                  <div className="cpt-cyber-card-footer">
-                    <span className="cpt-cyber-card-tag">RTSP CAMERA</span>
-                    <button className="cpt-cyber-card-btn">Launch Console →</button>
-                  </div>
-                </div>
-
-                <div className="cpt-cyber-card" onClick={() => navigate('/cyber/forensic')}>
-                  <div className="cpt-cyber-card-icon">
-                    <ShieldAlert size={32} />
-                  </div>
-                  <h3 className="cpt-cyber-card-title">Forensic Analysis</h3>
-                  <p className="cpt-cyber-card-desc">
-                    Deep multi-stage video integrity audit, SBI deepfake screening, quality gate validation, ffprobe container inspection, and cryptographic Merkle custody.
-                  </p>
-                  <div className="cpt-cyber-card-footer">
-                    <span className="cpt-cyber-card-tag">FILE / URL INGEST</span>
-                    <button className="cpt-cyber-card-btn">Open Suite →</button>
-                  </div>
-                </div>
-
-                <div className="cpt-cyber-card" onClick={() => navigate('/cyber/trace')}>
-                  <div className="cpt-cyber-card-icon">
-                    <Compass size={32} />
-                  </div>
-                  <h3 className="cpt-cyber-card-title">Trace</h3>
-                  <p className="cpt-cyber-card-desc">
-                    Multi-camera person tracking and keyframe geographic location estimation. Governance-gated biometric evaluation.
-                  </p>
-                  <div className="cpt-cyber-card-footer">
-                    <span className="cpt-cyber-card-tag">COMING SOON</span>
-                    <button className="cpt-cyber-card-btn" style={{ opacity: 0.7 }}>View Status →</button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="cpt-cyber-notice">
-                All cyber operations run through the hardened unified pipeline via <code>POST /api/analyze</code>. Camera credentials are masked automatically.
-              </div>
+            <div className="cpt-cyber-landing-wrap" style={{ padding: '32px 24px', overflowY: 'auto', width: '100%', height: '100%' }}>
+              <CyberLandingPage />
             </div>
           ) : (
             <>
@@ -2362,7 +2175,7 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
           )}
 
           {/* Chat Input permanently pinned to bottom */}
-          {activeMode === 'general' ? (
+          {activeMode === 'general' && (
             <div className="cpt-bottom-input-container">
               <ChatInput
                 centered={false}
@@ -2387,10 +2200,6 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
                 modelDropdownRef={modelDropdownRef}
                 onOpenRtspModal={() => setShowRtspModal(true)}
               />
-            </div>
-          ) : (
-            <div className="cpt-bottom-input-container" style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: '13px' }}>
-              <span>Cyber Mode console entry points are available in the console cards above.</span>
             </div>
           )}
         </div>

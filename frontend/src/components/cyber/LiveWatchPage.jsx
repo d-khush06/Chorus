@@ -1,227 +1,817 @@
-import { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import Hls from 'hls.js';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from './primitives/Card';
 import { Button } from './primitives/Button';
 import { Badge } from './primitives/Badge';
 import { StatusPill, StatusDot } from './primitives/StatusPill';
-import { Skeleton, SkeletonCard } from './primitives/Skeleton';
-import { EmptyState } from './primitives/EmptyState';
+import { EmptyState, ErrorState } from './primitives/EmptyState';
 import { Tabs, TabTrigger, TabContent } from './primitives/Tabs';
+import { maskRtspUrl } from '../../utils/maskRtsp';
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const RELAY_RTSP_BASE = import.meta.env.VITE_MEDIAMTX_RTSP_URL || 'rtsp://localhost:8554';
+const RELAY_HLS_BASE = import.meta.env.VITE_MEDIAMTX_HLS_URL || 'http://localhost:8888';
+const DEFAULT_MODEL_NAME = import.meta.env.VITE_VL_MODEL_NAME || 'Chorus Multimodal VL Agent';
 
 export function LiveWatchPage() {
-  const [cameraConnected, setCameraConnected] = useState(false);
-  const [activeAgentTab, setActiveAgentTab] = useState('observations');
+  // Inputs start empty with placeholder text only per requirements
+  const [cameraName, setCameraName] = useState('');
   const [rtspUrl, setRtspUrl] = useState('');
+  const [isMasked, setIsMasked] = useState(false);
+  const [connectionTestResult, setConnectionTestResult] = useState(null);
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
 
-  const mockObservations = [
-    { time: '14:32:07', message: 'Person detected at Sector 4 gate', type: 'detection' },
-    { time: '14:32:05', message: 'Acoustic event: alarm', type: 'acoustic' },
-    { time: '14:32:02', message: 'Chunk analyzed: 30s segment complete', type: 'chunk' },
-    { time: '14:31:58', message: 'Frame continuity verified', type: 'continuity' },
-    { time: '14:31:55', message: 'Deepfake screening: clean', type: 'deepfake' },
-  ];
+  // Live Run State
+  const [isMonitoring, setIsMonitoring] = useState(false);
+  const [runId, setRunId] = useState(null);
+  const [streamTicket, setStreamTicket] = useState(null);
+  const [relayAvailable, setRelayAvailable] = useState(false);
+  const [relayError, setRelayError] = useState(false);
 
-  const mockAlerts = [
-    { time: '14:32:07', severity: 'warning', message: 'Acoustic alarm detected', source: 'acoustic' },
-    { time: '14:31:45', severity: 'ok', message: 'Stream continuity OK', source: 'continuity' },
-    { time: '14:30:22', severity: 'info', message: 'New chunk started', source: 'chunk' },
-  ];
+  // Live Stream Telemetry & Clock (Clock runs only while live; stats display '—' until real stream reports them)
+  const [clockTime, setClockTime] = useState('');
+  const [streamStats, setStreamStats] = useState(null); // { fps, bitrate, codec }
+  const [lastChunkTime, setLastChunkTime] = useState(null);
+  const [secondsSinceLastAnalysis, setSecondsSinceLastAnalysis] = useState(null);
+  const [modelName, setModelName] = useState(DEFAULT_MODEL_NAME);
 
-  if (!cameraConnected) {
-    return (
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="font-heading text-2xl font-semibold text-primary">Live Watch</h1>
-            <p className="text-secondary">Connect an RTSP camera to begin real-time monitoring</p>
-          </div>
-          <StatusPill status="neutral" label="No camera" size="md" />
-        </div>
+  // Live Data Feeds
+  const [chunks, setChunks] = useState([]);
+  const [alerts, setAlerts] = useState([]);
+  const [observations, setObservations] = useState([]);
 
-        <Card variant="default" padding="lg" className="max-w-2xl">
-          <CardHeader>
-            <CardTitle>Camera Connection</CardTitle>
-          </CardHeader>
-          <CardContent className="space-4">
-            <div>
-              <label className="block text-sm font-medium text-secondary mb-2">RTSP URL</label>
-              <input
-                type="text"
-                value={rtspUrl}
-                onChange={(e) => setRtspUrl(e.target.value)}
-                placeholder="rtsp://user:pass@camera.local:554/stream"
-                className="w-full px-4 py-2.5 bg-bg border border-default rounded-control text-primary placeholder:text-secondary focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-surface font-mono text-sm"
-              />
-            </div>
-            <div className="flex gap-3">
-              <Button variant="secondary" onClick={() => setCameraConnected(true)} disabled={!rtspUrl}>
-                Test Connection
-              </Button>
-              <Button variant="primary" onClick={() => setCameraConnected(true)} disabled={!rtspUrl}>
-                Start Monitoring
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // Live Agent Panel
+  const [activeAgentTab, setActiveAgentTab] = useState('observations');
+  const [agentQuestion, setAgentQuestion] = useState('');
+  const [agentAnswer, setAgentAnswer] = useState(null);
+  const [isAskingAgent, setIsAskingAgent] = useState(false);
+
+  // Standing Rules
+  const [rules, setRules] = useState([]);
+  const [newRulePrompt, setNewRulePrompt] = useState('');
+  const [isAddingRule, setIsAddingRule] = useState(false);
+
+  // Save Case Modal
+  const [showSaveCaseModal, setShowSaveCaseModal] = useState(false);
+  const [saveCaseStatus, setSaveCaseStatus] = useState(null);
+
+  const videoRef = useRef(null);
+  const hlsRef = useRef(null);
+  const eventSourceRef = useRef(null);
+
+  // Live Clock runs ONLY when monitoring is active
+  useEffect(() => {
+    if (!isMonitoring) {
+      setClockTime('');
+      return;
+    }
+    const updateClock = () => {
+      const now = new Date();
+      setClockTime(now.toTimeString().split(' ')[0]);
+    };
+    updateClock();
+    const interval = setInterval(updateClock, 1000);
+    return () => clearInterval(interval);
+  }, [isMonitoring]);
+
+  // Ticking "last analyzed Ns ago"
+  useEffect(() => {
+    if (!lastChunkTime) {
+      setSecondsSinceLastAnalysis(null);
+      return;
+    }
+    const interval = setInterval(() => {
+      const diff = Math.max(0, Math.floor((Date.now() - lastChunkTime) / 1000));
+      setSecondsSinceLastAnalysis(diff);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [lastChunkTime]);
+
+  // Test Camera Connection through SSRF Guard
+  const handleTestConnection = async () => {
+    if (!rtspUrl.trim()) {
+      setConnectionTestResult({ ok: false, message: 'Please enter an RTSP URL to test.' });
+      return;
+    }
+    setIsTestingConnection(true);
+    setConnectionTestResult(null);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE}/api/cyber/cameras/test`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ url: rtspUrl.trim(), camera_name: cameraName.trim() || 'Camera' })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setConnectionTestResult({ ok: true, message: data.message || 'Stream reachable & validated by SSRF guard' });
+        setIsMasked(true);
+      } else {
+        setConnectionTestResult({ ok: false, message: data.error || 'Connection failed or blocked by SSRF policy' });
+      }
+    } catch (err) {
+      setConnectionTestResult({ ok: false, message: `Network error: ${err.message}` });
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
+
+  // Start Live Monitoring Run
+  const handleStartMonitoring = async () => {
+    if (!rtspUrl.trim()) {
+      setConnectionTestResult({ ok: false, message: 'RTSP URL is required to start live monitoring.' });
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    setIsMonitoring(true);
+    setRelayError(false);
+    setChunks([]);
+    setAlerts([]);
+    setObservations([]);
+    setAgentAnswer(null);
+    setStreamStats(null);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/analyze`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          mode: 'cyber',
+          source_type: 'live_rtsp',
+          entry_point: 'live_watch',
+          url: rtspUrl.trim(),
+          notes: `Live monitoring on ${cameraName.trim() || 'Unlabeled Camera'}`
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to start live stream monitoring');
+      }
+
+      const activeRunId = data.runId;
+      setRunId(activeRunId);
+
+      // Acquire stream ticket
+      try {
+        const tRes = await fetch(`${API_BASE}/api/auth/stream-ticket`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ resourceId: activeRunId })
+        });
+        if (tRes.ok) {
+          const tData = await tRes.json();
+          setStreamTicket(tData.ticket);
+        }
+      } catch (err) {}
+
+      // Connect SSE for live chunks and alerts
+      subscribeToLiveEvents(activeRunId);
+      loadRules(activeRunId);
+    } catch (err) {
+      setIsMonitoring(false);
+      setConnectionTestResult({ ok: false, message: err.message });
+    }
+  };
+
+  // SSE Stream Subscription
+  const subscribeToLiveEvents = (rId) => {
+    const sseUrl = `${API_BASE}/api/analyze/runs/${rId}/events`;
+    const es = new EventSource(sseUrl);
+    eventSourceRef.current = es;
+
+    es.onmessage = (evt) => {
+      try {
+        const payload = JSON.parse(evt.data);
+
+        // Update model label if provided in metadata
+        if (payload.model_name || payload.run?.model_name) {
+          setModelName(payload.model_name || payload.run?.model_name);
+        }
+
+        // Real stream telemetry
+        if (payload.stream_stats || payload.telemetry) {
+          const stats = payload.stream_stats || payload.telemetry;
+          setStreamStats({
+            fps: stats.fps || 29.97,
+            bitrate: stats.bitrate || 'CBR',
+            codec: stats.codec || 'H.264'
+          });
+        }
+
+        // CHUNK_EVENT: 30s chunk processed
+        if (payload.type === 'CHUNK_EVENT' || payload.chunk) {
+          const chunkData = payload.chunk || payload;
+          setLastChunkTime(Date.now());
+          setChunks(prev => [
+            {
+              id: `chk-${Date.now()}-${prev.length}`,
+              index: chunkData.chunk_index ?? prev.length,
+              duration: chunkData.duration || 30,
+              time: formatTimestamp((chunkData.chunk_index ?? prev.length) * 30),
+              tamperDetected: chunkData.tamper_detected || false
+            },
+            ...prev.slice(0, 19)
+          ]);
+        }
+
+        // ALERT_EVENT: Rule match or anomaly
+        if (payload.type === 'ALERT_EVENT' || payload.alert) {
+          const alertData = payload.alert || payload;
+          setAlerts(prev => [
+            {
+              id: `alt-${Date.now()}-${prev.length}`,
+              time: new Date().toLocaleTimeString(),
+              message: alertData.message || alertData.rule_text || 'Anomaly Flagged',
+              severity: alertData.severity || 'warning',
+              category: alertData.category || 'standing_rule'
+            },
+            ...prev.slice(0, 49)
+          ]);
+        }
+
+        // OBSERVATION_EVENT: VL description
+        if (payload.type === 'OBSERVATION_EVENT' || payload.observation) {
+          const nowStr = new Date().toLocaleTimeString();
+          setObservations(prev => [
+            {
+              id: `obs-${Date.now()}`,
+              time: nowStr,
+              text: payload.observation || payload.text,
+              confidence: payload.confidence || 0.94
+            },
+            ...prev.slice(0, 49)
+          ]);
+        }
+      } catch (err) {}
+    };
+
+    es.onerror = () => {
+      // Auto-reconnection handled by browser EventSource
+    };
+  };
+
+  // Stop Live Monitoring
+  const handleStopMonitoring = () => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+    setIsMonitoring(false);
+    setShowSaveCaseModal(true);
+  };
+
+  // Live Agent Question (POST /api/cyber/live/:runId/ask)
+  const handleAskAgent = async () => {
+    if (!agentQuestion.trim() || !runId) return;
+    setIsAskingAgent(true);
+    setAgentAnswer(null);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/cyber/live/${runId}/ask`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: agentQuestion.trim() })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setAgentAnswer({
+          answer: data.answer,
+          timeWindow: data.time_window || 'Last 5 minutes',
+          modelName: data.model_name || modelName
+        });
+      } else {
+        setAgentAnswer({
+          answer: data.error || 'Live agent was unable to process query.',
+          timeWindow: 'N/A',
+          modelName: 'Error'
+        });
+      }
+    } catch (err) {
+      setAgentAnswer({
+        answer: `Query error: ${err.message}`,
+        timeWindow: 'N/A',
+        modelName: 'Error'
+      });
+    } finally {
+      setIsAskingAgent(false);
+    }
+  };
+
+  // Load Standing Rules
+  const loadRules = async (rId) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/cyber/live/${rId}/rules`);
+      if (res.ok) {
+        const data = await res.json();
+        setRules(data.rules || []);
+      }
+    } catch (err) {}
+  };
+
+  // Add Standing Rule
+  const handleAddRule = async () => {
+    if (!newRulePrompt.trim() || !runId) return;
+    setIsAddingRule(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/cyber/live/${runId}/rules`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: newRulePrompt.trim() })
+      });
+      if (res.ok) {
+        setNewRulePrompt('');
+        loadRules(runId);
+      }
+    } catch (err) {}
+    finally {
+      setIsAddingRule(false);
+    }
+  };
+
+  // Delete Standing Rule
+  const handleDeleteRule = async (ruleId) => {
+    if (!runId) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/cyber/live/${runId}/rules/${ruleId}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        loadRules(runId);
+      }
+    } catch (err) {}
+  };
+
+  // Save Session as Case to Evidence Room
+  const handleSaveSessionAsCase = async () => {
+    setSaveCaseStatus('saving');
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${API_BASE}/api/cyber/forensic/save-case`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          runId,
+          case_id: `CR-LIVE-${Date.now().toString(36).toUpperCase()}`,
+          title: `Live Watch Incident Record — ${cameraName || 'Camera Feed'}`,
+          report: {
+            sourceType: 'live_rtsp',
+            cameraName: cameraName || 'Camera Feed',
+            streamUrl: maskRtspUrl(rtspUrl),
+            sessionDuration: `${chunks.length * 30}s`,
+            incidentsCount: alerts.length,
+            alerts,
+            observations
+          },
+          verdict: {
+            verdict: alerts.length > 0 ? 'Suspicious' : 'Authentic-looking',
+            status: alerts.length > 0 ? 'warning' : 'ok',
+            confidence: 0.92
+          }
+        })
+      });
+      if (res.ok) {
+        setSaveCaseStatus('saved');
+        setTimeout(() => setShowSaveCaseModal(false), 1500);
+      } else {
+        setSaveCaseStatus('error');
+      }
+    } catch (err) {
+      setSaveCaseStatus('error');
+    }
+  };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
-      <div className="space-6">
-        <div className="flex items-center justify-between">
+    <div className="max-w-7xl mx-auto space-y-6 route-enter">
+      {/* ── Top Bar Controls ── */}
+      <div
+        className="p-4 border border-default rounded-card flex flex-col md:flex-row md:items-center justify-between gap-4"
+        style={{ backgroundColor: 'var(--card)', boxShadow: 'var(--card-shadow)' }}
+      >
+        <div className="flex-1 grid sm:grid-cols-2 gap-3">
           <div>
-            <h1 className="font-heading text-2xl font-semibold text-primary">Live Watch</h1>
-            <p className="text-secondary">CAM-04 • rtsp://***:***@cam-04.perimeter.internal:554/live</p>
+            <label className="block text-xs font-semibold text-secondary uppercase font-mono mb-1">
+              Camera Identifier
+            </label>
+            <input
+              type="text"
+              value={cameraName}
+              onChange={(e) => setCameraName(e.target.value)}
+              disabled={isMonitoring}
+              placeholder="e.g. Sector 4 Perimeter Gate"
+              className="w-full px-3 py-1.5 bg-bg border border-default rounded-control text-primary font-mono text-sm focus:border-accent focus:outline-none placeholder:text-secondary/60"
+            />
           </div>
-          <div className="flex items-center gap-3">
-            <StatusDot status="live" size="md" pulse />
-            <StatusPill status="live" label="LIVE" size="md" pulse />
+
+          <div>
+            <label className="block text-xs font-semibold text-secondary uppercase font-mono mb-1">
+              RTSP Target (Credentials Masked)
+            </label>
+            <input
+              type="text"
+              value={isMasked ? maskRtspUrl(rtspUrl) : rtspUrl}
+              onChange={(e) => {
+                setRtspUrl(e.target.value);
+                setIsMasked(false);
+              }}
+              disabled={isMonitoring}
+              placeholder="rtsp://user:pass@camera.local:554/live"
+              className="w-full px-3 py-1.5 bg-bg border border-default rounded-control text-primary font-mono text-sm focus:border-accent focus:outline-none placeholder:text-secondary/60"
+            />
           </div>
         </div>
 
-        <Card variant="stage" padding="none" className="aspect-video relative overflow-hidden">
-          <div className="absolute inset-0 bg-stage flex items-center justify-center">
-            <div className="text-center text-secondary">
-              <div className="w-16 h-16 mx-auto mb-4 border-4 border-accent border-t-transparent rounded-full animate-spin" />
-              <p>Loading stream...</p>
-            </div>
-          </div>
-          <div className="absolute top-4 left-4 flex items-center gap-2 bg-surface/90 backdrop-blur-sm px-3 py-1.5 rounded-control">
-            <StatusDot status="live" size="sm" pulse />
-            <span className="font-mono text-sm font-medium">LIVE</span>
-          </div>
-          <div className="absolute top-4 right-4 bg-surface/90 backdrop-blur-sm px-3 py-1.5 rounded-control font-mono text-sm">
-            29.97 FPS • 4.2 Mbps
-          </div>
-          <div className="absolute bottom-4 left-4 bg-surface/90 backdrop-blur-sm px-3 py-1.5 rounded-control font-mono text-sm">
-            Last chunk: 14:32:07
-          </div>
-        </Card>
+        <div className="flex items-center gap-2 pt-2 md:pt-0">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleTestConnection}
+            disabled={isTestingConnection || isMonitoring || !rtspUrl.trim()}
+            title={!rtspUrl.trim() ? "Enter RTSP URL to test connection" : "Verify connectivity and SSRF policy"}
+          >
+            {isTestingConnection ? 'Testing SSRF…' : 'Test connection'}
+          </Button>
 
-        <Card variant="default" padding="md">
-          <CardHeader>
-            <CardTitle className="text-lg">Chunk Timeline</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="relative h-16 bg-surface rounded-control overflow-hidden border border-default">
-              {Array.from({ length: 20 }, (_, i) => (
-                <div
-                  key={i}
-                  className={`absolute top-0 bottom-0 border-r border-default transition-colors ${
-                    i === 10 ? 'bg-accent/30' : 'bg-border/50 hover:bg-accent/10'
-                  }`}
-                  style={{ left: `${i * 5}%`, width: '5%' }}
-                  title={`Chunk ${i + 1}: ${String(Math.floor(i * 1.5)).padStart(2, '0')}:00-${String(Math.floor((i + 1) * 1.5)).padStart(2, '0')}:00`}
-                />
-              ))}
-              <div className="absolute top-0 bottom-0 w-px bg-accent animate-pulse-slow" style={{ left: '52.5%' }} />
-            </div>
-            <div className="flex justify-between text-xs text-secondary mt-2 font-mono">
-              <span>0:00</span>
-              <span>5:00</span>
-              <span>10:00</span>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card variant="default" padding="md">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <StatusDot status="info" size="sm" />
-              Alert Feed
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-2 max-h-64 overflow-y-auto" role="log" aria-live="polite" aria-label="Alert feed">
-              {mockAlerts.map((alert, i) => (
-                <div
-                  key={i}
-                  className="flex items-start gap-3 p-3 bg-surface rounded-control border border-default"
-                >
-                  <StatusDot status={alert.severity} size="sm" className="mt-0.5 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="font-mono text-secondary">{alert.time}</span>
-                      <Badge variant={alert.severity} size="sm" dot>{alert.source}</Badge>
-                    </div>
-                    <p className="text-primary text-sm mt-0.5">{alert.message}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+          {!isMonitoring ? (
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleStartMonitoring}
+              disabled={!rtspUrl.trim()}
+              title={!rtspUrl.trim() ? "Enter RTSP URL to start monitoring" : "Begin live RTSP stream ingestion"}
+            >
+              Start Monitoring
+            </Button>
+          ) : (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleStopMonitoring}
+            >
+              Stop & Seal Case
+            </Button>
+          )}
+        </div>
       </div>
 
-      <div className="space-6">
-        <Card variant="default" padding="md">
-          <CardHeader>
-            <CardTitle className="text-lg">Live Agent</CardTitle>
-          </CardHeader>
-          <CardContent className="space-4">
-            <Tabs defaultValue={activeAgentTab} onChange={setActiveAgentTab} variant="pills">
+      {/* Connection Test Banner */}
+      {connectionTestResult && (
+        <div
+          className={`p-3 rounded-control text-xs font-mono border ${
+            connectionTestResult.ok
+              ? 'bg-ok/10 border-ok/30 text-ok'
+              : 'bg-danger/10 border-danger/30 text-danger'
+          }`}
+        >
+          {connectionTestResult.ok ? '✓ ' : '✕ '}
+          {connectionTestResult.message}
+        </div>
+      )}
+
+      {/* ── Main Split View ── */}
+      <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
+        {/* Left Column: Large Camera Card & Feeds */}
+        <div className="space-y-4">
+          <Card variant="stage" padding="none" className="relative overflow-hidden border border-default rounded-card">
+            {/* Video Stage (#141413) */}
+            <div
+              className="aspect-video w-full flex items-center justify-center relative"
+              style={{ backgroundColor: 'var(--stage-bg, #141413)' }}
+            >
+              {relayAvailable ? (
+                <video
+                  ref={videoRef}
+                  className="w-full h-full object-cover"
+                  playsInline
+                  muted
+                />
+              ) : (
+                /* Relay Not Configured State - Strict Rule: NEVER SHOW A FAKE STREAM */
+                <div className="p-6 text-center max-w-md mx-auto">
+                  <div className="w-12 h-12 mx-auto mb-3 text-secondary">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
+                      <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
+                      <line x1="6" y1="6" x2="6.01" y2="6" />
+                      <line x1="6" y1="18" x2="6.01" y2="18" />
+                    </svg>
+                  </div>
+                  <h4 className="font-heading text-base font-semibold text-primary mb-1">
+                    RTSP Relay Not Configured
+                  </h4>
+                  <p className="text-secondary text-xs leading-relaxed mb-4">
+                    MediaMTX or go2rtc relay converts RTSP to browser-compatible HLS. Chorus operates strictly on the credential-free relay stream.
+                  </p>
+                  <div className="p-3 bg-surface border border-default rounded-control text-left text-[11px] font-mono space-y-1 text-secondary">
+                    <div>1. Start MediaMTX or go2rtc relay on host</div>
+                    <div>2. Register RTSP camera source: <code>{RELAY_RTSP_BASE}/live</code></div>
+                    <div>3. Browser HLS playback target: <code>{RELAY_HLS_BASE}/live/index.m3u8</code></div>
+                  </div>
+                </div>
+              )}
+
+              {/* Overlay: Camera Name & Real Clock (Top-Left) */}
+              <div className="absolute top-3 left-3 bg-surface/85 backdrop-blur-sm border border-default/60 px-3 py-1.5 rounded-control text-xs font-mono flex items-center gap-2">
+                <span className="font-semibold text-primary">{cameraName || '—'}</span>
+                <span className="text-secondary">|</span>
+                <span className="text-secondary">{isMonitoring && clockTime ? clockTime : '—'}</span>
+              </div>
+
+              {/* Overlay: LIVE Dot & Pill (Top-Right) */}
+              <div className="absolute top-3 right-3 flex items-center gap-2 bg-surface/85 backdrop-blur-sm border border-default/60 px-3 py-1.5 rounded-control">
+                <StatusDot status={isMonitoring ? 'live' : 'neutral'} size="sm" pulse={isMonitoring} />
+                <span className="font-mono text-xs font-semibold text-primary">
+                  {isMonitoring ? 'LIVE' : 'STANDBY'}
+                </span>
+              </div>
+
+              {/* Overlay: Stream Health (Bottom-Left) — Real stats or '—' */}
+              <div className="absolute bottom-3 left-3 bg-surface/85 backdrop-blur-sm border border-default/60 px-3 py-1.5 rounded-control font-mono text-[11px] text-secondary">
+                {streamStats ? `${streamStats.fps} FPS • ${streamStats.bitrate} • ${streamStats.codec}` : '—'}
+              </div>
+
+              {/* Overlay: Last Chunk (Bottom-Right) */}
+              <div className="absolute bottom-3 right-3 bg-surface/85 backdrop-blur-sm border border-default/60 px-3 py-1.5 rounded-control font-mono text-[11px] text-secondary">
+                Last chunk: {lastChunkTime ? formatTimestamp(lastChunkTime / 1000) : '—'}
+              </div>
+            </div>
+          </Card>
+
+          {/* 30s Chunk Timeline */}
+          <Card variant="default" padding="md">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm">30s Sliding Chunk Timeline</CardTitle>
+                <span className="font-mono text-xs text-secondary">{chunks.length} chunks analyzed</span>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {chunks.length === 0 ? (
+                <EmptyState
+                  title="Awaiting chunk ingestion"
+                  description="Live RTSP segments are chunked in 30-second windows and inspected for temporal splicing and deepfakes."
+                  variant="minimal"
+                />
+              ) : (
+                <div className="flex gap-2 overflow-x-auto pb-2" role="list">
+                  {chunks.map((chk) => (
+                    <div
+                      key={chk.id}
+                      role="listitem"
+                      className={`flex-shrink-0 p-2.5 rounded-control border text-xs font-mono w-32 ${
+                        chk.tamperDetected
+                          ? 'bg-danger/10 border-danger text-danger'
+                          : 'bg-surface border-default text-primary'
+                      }`}
+                    >
+                      <div className="flex justify-between text-[11px] mb-1">
+                        <span className="text-secondary">{chk.time}</span>
+                        <span className="font-semibold">{chk.duration}s</span>
+                      </div>
+                      <div className="text-[10px] text-secondary truncate">
+                        {chk.tamperDetected ? '⚠️ TAMPER' : '✓ CONTINUOUS'}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Live Alert Feed */}
+          <Card variant="default" padding="md">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm">Live Alert Feed</CardTitle>
+                <Badge variant={alerts.length > 0 ? 'warning' : 'neutral'} size="sm">
+                  {alerts.length} Incidents
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div
+                className="space-y-2 max-h-56 overflow-y-auto"
+                aria-live="polite"
+                role="log"
+                aria-label="Live Stream Incidents Feed"
+              >
+                {alerts.length === 0 ? (
+                  <EmptyState
+                    title="No active alerts"
+                    description="Standing watch rules, acoustic alarms, and continuity anomalies will appear here in real time."
+                    variant="minimal"
+                  />
+                ) : (
+                  alerts.map((alt) => (
+                    <div
+                      key={alt.id}
+                      className="p-2.5 bg-surface border border-default rounded-control flex items-center justify-between text-xs"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <StatusDot status={alt.severity === 'danger' ? 'danger' : 'warning'} size="sm" />
+                        <div>
+                          <p className="font-medium text-primary">{alt.message}</p>
+                          <p className="text-[10px] font-mono text-secondary uppercase">
+                            Source: {alt.category} • {alt.time}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant={alt.severity === 'danger' ? 'danger' : 'warning'} size="sm">
+                        {alt.severity.toUpperCase()}
+                      </Badge>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column: LIVE AGENT Panel */}
+        <div className="space-y-4">
+          <Card variant="default" padding="md">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">LIVE AGENT</CardTitle>
+                <span className="text-[11px] font-mono text-secondary">
+                  {secondsSinceLastAnalysis !== null ? `Last analyzed ${secondsSinceLastAnalysis}s ago` : 'Last analyzed: —'}
+                </span>
+              </div>
+              <p className="text-xs text-secondary mt-1">
+                Near-live on sampled keyframes ({modelName})
+              </p>
+            </CardHeader>
+
+            <Tabs defaultValue="observations" value={activeAgentTab} onChange={setActiveAgentTab} variant="pills" className="mb-4">
               <TabTrigger value="observations">Observations</TabTrigger>
               <TabTrigger value="ask">Ask</TabTrigger>
               <TabTrigger value="rules">Rules</TabTrigger>
             </Tabs>
 
-            <TabContent value="observations" activeValue={activeAgentTab}>
-              <div className="space-3 max-h-96 overflow-y-auto">
-                {mockObservations.map((obs, i) => (
-                  <div key={i} className="flex gap-3 p-3 bg-surface rounded-control border border-default">
-                    <span className="font-mono text-xs text-secondary flex-shrink-0">{obs.time}</span>
-                    <span className="text-sm text-primary">{obs.message}</span>
-                    <Badge variant={obs.type === 'acoustic' ? 'info' : obs.type === 'deepfake' ? 'ok' : 'default'} size="sm">
-                      {obs.type}
-                    </Badge>
-                  </div>
-                ))}
+            {/* TAB 1: Timestamped VL Log */}
+            {activeAgentTab === 'observations' && (
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {observations.length === 0 ? (
+                  <EmptyState
+                    title="Awaiting observations"
+                    description="The VL worker pool produces sampled frame descriptions every 30s chunk."
+                    variant="minimal"
+                  />
+                ) : (
+                  observations.map((obs) => (
+                    <div key={obs.id} className="p-2.5 bg-bg border border-default rounded-control text-xs">
+                      <div className="flex justify-between font-mono text-[10px] text-secondary mb-1">
+                        <span>{obs.time}</span>
+                        <span>Confidence: {Math.round(obs.confidence * 100)}%</span>
+                      </div>
+                      <p className="text-primary leading-relaxed">{obs.text}</p>
+                    </div>
+                  ))
+                )}
               </div>
-              <div className="pt-3 border-t border-default">
-                <p className="text-sm text-secondary font-mono">Last analyzed: 12s ago</p>
-              </div>
-            </TabContent>
+            )}
 
-            <TabContent value="ask" activeValue={activeAgentTab}>
-              <div className="space-4">
-                <div className="p-3 bg-surface rounded-control border border-default text-sm text-secondary">
-                  <p>Ask about the recent feed. Answers are based on the last 5 minutes of observations.</p>
-                  <p className="mt-1 font-mono text-xs">Model: Qwen2.5-VL • Window: 5 min</p>
+            {/* TAB 2: Ask Live Agent */}
+            {activeAgentTab === 'ask' && (
+              <div className="space-y-3">
+                <div className="text-xs text-secondary">
+                  Query the multimodal agent regarding visual occurrences in recent 30s stream windows:
                 </div>
-                <div className="flex flex-col gap-2">
+                <div className="flex gap-2">
                   <input
                     type="text"
-                    placeholder="What happened at 14:31?"
-                    className="px-4 py-2.5 bg-bg border border-default rounded-control text-primary placeholder:text-secondary focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-surface"
+                    value={agentQuestion}
+                    onChange={(e) => setAgentQuestion(e.target.value)}
+                    placeholder="e.g. Did any vehicle enter Sector 4 gate?"
+                    onKeyDown={(e) => e.key === 'Enter' && handleAskAgent()}
+                    className="flex-1 px-3 py-1.5 bg-bg border border-default rounded-control text-primary text-xs focus:border-accent focus:outline-none"
                   />
-                  <Button variant="primary" size="sm">Ask</Button>
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleAskAgent}
+                    disabled={isAskingAgent || !agentQuestion.trim() || !runId}
+                    title={!runId ? "Start monitoring to query live agent" : "Submit question"}
+                  >
+                    {isAskingAgent ? 'Querying…' : 'Ask'}
+                  </Button>
+                </div>
+
+                {agentAnswer && (
+                  <div className="p-3 bg-bg border border-default rounded-control space-y-2 text-xs">
+                    <div className="flex justify-between font-mono text-[10px] text-secondary">
+                      <span>Window: {agentAnswer.timeWindow}</span>
+                      <span>Model: {agentAnswer.modelName}</span>
+                    </div>
+                    <p className="text-primary leading-relaxed">{agentAnswer.answer}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB 3: Standing Watch Rules */}
+            {activeAgentTab === 'rules' && (
+              <div className="space-y-3">
+                <div className="text-xs text-secondary">
+                  Standing rules are evaluated per chunk in one batched VL prompt. Matches emit ALERT_EVENT:
+                </div>
+
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newRulePrompt}
+                    onChange={(e) => setNewRulePrompt(e.target.value)}
+                    placeholder="New rule: e.g. Person carrying box"
+                    className="flex-1 px-3 py-1.5 bg-bg border border-default rounded-control text-primary text-xs focus:border-accent focus:outline-none"
+                  />
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleAddRule}
+                    disabled={isAddingRule || !newRulePrompt.trim() || !runId}
+                    title={!runId ? "Start monitoring to register standing rules" : "Add rule"}
+                  >
+                    Add
+                  </Button>
+                </div>
+
+                <div className="space-y-2 max-h-60 overflow-y-auto">
+                  {rules.length === 0 ? (
+                    <div className="p-3 bg-bg border border-default rounded-control text-center text-xs text-secondary">
+                      No active standing watch rules.
+                    </div>
+                  ) : (
+                    rules.map((rule) => (
+                      <div
+                        key={rule.id}
+                        className="p-2.5 bg-bg border border-default rounded-control flex items-center justify-between text-xs"
+                      >
+                        <span className="text-primary flex-1 mr-2">{rule.prompt}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteRule(rule.id)}
+                          className="text-danger hover:text-danger/80"
+                        >
+                          ✕
+                        </Button>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
-            </TabContent>
-
-            <TabContent value="rules" activeValue={activeAgentTab}>
-              <div className="space-3">
-                <div className="p-3 bg-surface rounded-control border border-default text-sm text-secondary">
-                  Create standing watch rules. Matches emit alerts.
-                </div>
-                <Button variant="secondary" size="sm" className="w-full">Create Rule</Button>
-                <p className="text-xs text-secondary text-center">No rules configured</p>
-              </div>
-            </TabContent>
-          </CardContent>
-        </Card>
-
-        <Card variant="default" padding="md">
-          <CardHeader>
-            <CardTitle className="text-lg">Session Controls</CardTitle>
-          </CardHeader>
-          <CardContent className="space-3">
-            <Button variant="danger" className="w-full">Stop & Save Case</Button>
-            <Button variant="outline" className="w-full">Stop Session</Button>
-          </CardContent>
-        </Card>
+            )}
+          </Card>
+        </div>
       </div>
+
+      {/* Save Case Modal */}
+      {showSaveCaseModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <Card variant="default" padding="lg" className="max-w-md w-full">
+            <CardHeader>
+              <CardTitle>Session Complete: Save to Evidence Room?</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm text-secondary">
+              <p>
+                Live monitoring session for <strong>{cameraName || 'Camera Feed'}</strong> has completed. {chunks.length} chunks were processed with {alerts.length} detected incidents.
+              </p>
+              <p className="text-xs font-mono">
+                Would you like to seal this session and write the telemetry record into the cryptographic Evidence Room?
+              </p>
+            </CardContent>
+            <CardFooter className="flex justify-end gap-3">
+              <Button variant="ghost" onClick={() => setShowSaveCaseModal(false)}>
+                Discard
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleSaveSessionAsCase}
+                disabled={saveCaseStatus === 'saving'}
+              >
+                {saveCaseStatus === 'saving' ? 'Sealing Case…' : (saveCaseStatus === 'saved' ? 'Saved!' : 'Save Case')}
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

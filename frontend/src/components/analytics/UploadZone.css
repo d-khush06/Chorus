@@ -29,16 +29,11 @@
   letter-spacing: 0.01em;
 }
 
-.upload-zone--general .upload-zone__tab.active {
-  background: linear-gradient(135deg, rgba(99,102,241,0.25), rgba(139,92,246,0.25));
-  color: #c4b5fd;
-  box-shadow: 0 0 12px rgba(99,102,241,0.2);
-}
-
+.upload-zone--general .upload-zone__tab.active,
 .upload-zone--cyber .upload-zone__tab.active {
-  background: linear-gradient(135deg, rgba(153,27,27,0.3), rgba(220,38,38,0.3));
-  color: #fca5a5;
-  box-shadow: 0 0 12px rgba(220,38,38,0.2);
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
 }
 
 /* Drop Area */
@@ -129,7 +124,7 @@
 
 .upload-zone__browse-btn:hover {
   background: rgba(255,255,255,0.1);
-  color: #fff;
+  color: var(--text);
 }
 
 /* File preview row */
@@ -264,12 +259,15 @@
   color: white;
 }
 
-.upload-zone__analyze-btn--general {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+.upload-zone__analyze-btn--general,
+.upload-zone__analyze-btn--cyber {
+  background: var(--accent);
+  color: #FAF9F5;
 }
 
-.upload-zone__analyze-btn--cyber {
-  background: linear-gradient(135deg, #991b1b, #dc2626);
+[data-theme="dark"] .upload-zone__analyze-btn--general,
+[data-theme="dark"] .upload-zone__analyze-btn--cyber {
+  color: #191816;
 }
 
 .upload-zone__analyze-btn.ready {

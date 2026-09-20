@@ -23,23 +23,25 @@ const getAuthHeaders = () => {
 
 /**
  * Returns the list of all case manifests from backend or fallback.
+ * @param {string} [caseType]
  * @returns {Promise<Array>}
  */
-export async function fetchCases() {
+export async function fetchCases(caseType) {
   try {
-    const res = await fetch(`${API_BASE}/api/cases`, {
+    const url = caseType ? `${API_BASE}/api/cases?case_type=${encodeURIComponent(caseType)}` : `${API_BASE}/api/cases`;
+    const res = await fetch(url, {
       headers: getAuthHeaders()
     });
     if (res.ok) {
       const json = await res.json();
-      if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+      if (json.success && Array.isArray(json.data)) {
         return json.data;
       }
     }
   } catch (err) {
-    console.warn('[API] Could not reach backend for cases, using mock data:', err.message);
+    console.warn('[API] Could not reach backend for cases:', err.message);
   }
-  return mockCases;
+  return caseType === 'cyber' ? [] : mockCases;
 }
 
 /**

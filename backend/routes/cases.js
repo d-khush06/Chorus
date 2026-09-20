@@ -1,6 +1,10 @@
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
+
+const CASES_STORE_FILE = path.join(__dirname, '../data/cases.json');
 
 // Mock case data matching frontend/src/data/mockCases.js schema
 const mockCases = [
@@ -162,15 +166,53 @@ async function addCase(caseManifest, timelineData) {
   }
 }
 
-// GET /api/cases - Returns all case manifests
+// GET /api/cases - Returns case manifests (filterable by case_type)
 router.get('/', protect, async (req, res) => {
+  const { case_type } = req.query;
+  let allCases = [];
+
+  // Load persisted cases from cases.json (saved from forensic or live runs)
+  if (fs.existsSync(CASES_STORE_FILE)) {
+    try {
+      const persisted = JSON.parse(fs.readFileSync(CASES_STORE_FILE, 'utf-8'));
+      if (Array.isArray(persisted)) {
+        allCases.push(...persisted);
+      }
+    } catch (e) {}
+  }
+
+  // Load from MongoDB
   try {
     const dbCases = await Case.find();
     if (dbCases && dbCases.length > 0) {
-      return res.json({ success: true, data: dbCases });
+      allCases.push(...dbCases.map(d => (d.toObject ? d.toObject() : d)));
     }
   } catch (e) {}
-  res.json({ success: true, data: mockCases });
+
+  // Merge mock cases only if no case_type filter or if not strictly empty
+  if (allCases.length === 0 && (!case_type || case_type === 'general')) {
+    allCases.push(...mockCases);
+  }
+
+  // Deduplicate by case_id
+  const seen = new Set();
+  const deduped = [];
+  for (const c of allCases) {
+    if (c.case_id && !seen.has(c.case_id)) {
+      seen.add(c.case_id);
+      deduped.push(c);
+    }
+  }
+
+  if (case_type === 'cyber') {
+    const cyberCases = deduped.filter(c => c.case_type === 'cyber' || c.entry_point === 'forensic' || c.entry_point === 'live_watch' || c.entry_point === 'trace');
+    return res.json({ success: true, data: cyberCases });
+  } else if (case_type === 'general') {
+    const generalCases = deduped.filter(c => c.case_type !== 'cyber');
+    return res.json({ success: true, data: generalCases });
+  }
+
+  res.json({ success: true, data: deduped });
 });
 
 // GET /api/cases/:caseId - Returns single case manifest
