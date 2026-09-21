@@ -402,12 +402,12 @@ export function LiveWatchPage() {
     <div className="max-w-7xl mx-auto space-y-6 route-enter">
       {/* ── Top Bar Controls ── */}
       <div
-        className="p-4 border border-default rounded-card flex flex-col md:flex-row md:items-center justify-between gap-4"
-        style={{ backgroundColor: 'var(--card)', boxShadow: 'var(--card-shadow)' }}
+        className="p-4 border border-default rounded-card flex flex-col md:flex-row md:items-end justify-between gap-4"
+        style={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', boxShadow: 'var(--card-shadow)' }}
       >
         <div className="flex-1 grid sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-semibold text-secondary uppercase font-mono mb-1">
+            <label className="block text-[11px] font-semibold text-secondary uppercase font-mono tracking-wider mb-1.5">
               Camera Identifier
             </label>
             <input
@@ -416,12 +416,13 @@ export function LiveWatchPage() {
               onChange={(e) => setCameraName(e.target.value)}
               disabled={isMonitoring}
               placeholder="e.g. Sector 4 Perimeter Gate"
-              className="w-full px-3 py-1.5 bg-bg border border-default rounded-control text-primary font-mono text-sm focus:border-accent focus:outline-none placeholder:text-secondary/60"
+              className="w-full px-3 py-2 bg-bg border border-border rounded-control text-primary font-mono text-xs focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none transition-all placeholder:text-secondary/50"
+              style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg)', color: 'var(--text)' }}
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-secondary uppercase font-mono mb-1">
+            <label className="block text-[11px] font-semibold text-secondary uppercase font-mono tracking-wider mb-1.5">
               RTSP Target (Credentials Masked)
             </label>
             <input
@@ -433,12 +434,13 @@ export function LiveWatchPage() {
               }}
               disabled={isMonitoring}
               placeholder="rtsp://user:pass@camera.local:554/live"
-              className="w-full px-3 py-1.5 bg-bg border border-default rounded-control text-primary font-mono text-sm focus:border-accent focus:outline-none placeholder:text-secondary/60"
+              className="w-full px-3 py-2 bg-bg border border-border rounded-control text-primary font-mono text-xs focus:border-accent focus:ring-1 focus:ring-accent focus:outline-none transition-all placeholder:text-secondary/50"
+              style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg)', color: 'var(--text)' }}
             />
           </div>
         </div>
 
-        <div className="flex items-center gap-2 pt-2 md:pt-0">
+        <div className="flex items-center gap-2 pt-2 md:pt-0 md:mb-[1px]">
           <Button
             variant="outline"
             size="sm"
@@ -505,37 +507,47 @@ export function LiveWatchPage() {
               ) : (
                 /* Relay Not Configured State - Strict Rule: NEVER SHOW A FAKE STREAM */
                 <div className="p-6 text-center max-w-md mx-auto">
-                  <div className="w-12 h-12 mx-auto mb-3 text-secondary">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                      <rect x="2" y="2" width="20" height="8" rx="2" ry="2" />
-                      <rect x="2" y="14" width="20" height="8" rx="2" ry="2" />
-                      <line x1="6" y1="6" x2="6.01" y2="6" />
-                      <line x1="6" y1="18" x2="6.01" y2="18" />
+                  <div
+                    className="w-12 h-12 mx-auto mb-3.5 text-secondary flex items-center justify-center rounded-control border border-border"
+                    style={{ backgroundColor: 'var(--surface)' }}
+                  >
+                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                      <path d="M23 7l-7 5 7 5V7z" />
+                      <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
                     </svg>
                   </div>
                   <h4 className="font-heading text-base font-semibold text-primary mb-1">
                     RTSP Relay Not Configured
                   </h4>
-                  <p className="text-secondary text-xs leading-relaxed mb-4">
+                  <p className="text-secondary text-xs leading-relaxed mb-4 max-w-sm mx-auto">
                     MediaMTX or go2rtc relay converts RTSP to browser-compatible HLS. Chorus operates strictly on the credential-free relay stream.
                   </p>
-                  <div className="p-3 bg-surface border border-default rounded-control text-left text-[11px] font-mono space-y-1 text-secondary">
+                  <div
+                    className="p-3.5 border border-border rounded-control text-left text-xs font-mono space-y-1.5 text-secondary"
+                    style={{ backgroundColor: 'var(--surface)' }}
+                  >
                     <div>1. Start MediaMTX or go2rtc relay on host</div>
-                    <div>2. Register RTSP camera source: <code>{RELAY_RTSP_BASE}/live</code></div>
-                    <div>3. Browser HLS playback target: <code>{RELAY_HLS_BASE}/live/index.m3u8</code></div>
+                    <div>2. Register RTSP camera source: <code className="bg-bg text-primary px-1.5 py-0.5 rounded border border-border text-[11px]">{RELAY_RTSP_BASE}/live</code></div>
+                    <div>3. Browser HLS playback target: <code className="bg-bg text-primary px-1.5 py-0.5 rounded border border-border text-[11px]">{RELAY_HLS_BASE}/live/index.m3u8</code></div>
                   </div>
                 </div>
               )}
 
               {/* Overlay: Camera Name & Real Clock (Top-Left) */}
-              <div className="absolute top-3 left-3 bg-surface/85 backdrop-blur-sm border border-default/60 px-3 py-1.5 rounded-control text-xs font-mono flex items-center gap-2">
+              <div
+                className="absolute top-3 left-3 border px-3 py-1.5 rounded-control text-xs font-mono flex items-center gap-2 shadow-sm"
+                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}
+              >
                 <span className="font-semibold text-primary">{cameraName || '—'}</span>
                 <span className="text-secondary">|</span>
                 <span className="text-secondary">{isMonitoring && clockTime ? clockTime : '—'}</span>
               </div>
 
               {/* Overlay: LIVE Dot & Pill (Top-Right) */}
-              <div className="absolute top-3 right-3 flex items-center gap-2 bg-surface/85 backdrop-blur-sm border border-default/60 px-3 py-1.5 rounded-control">
+              <div
+                className="absolute top-3 right-3 flex items-center gap-2 border px-3 py-1.5 rounded-control shadow-sm"
+                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}
+              >
                 <StatusDot status={isMonitoring ? 'live' : 'neutral'} size="sm" pulse={isMonitoring} />
                 <span className="font-mono text-xs font-semibold text-primary">
                   {isMonitoring ? 'LIVE' : 'STANDBY'}
@@ -543,12 +555,18 @@ export function LiveWatchPage() {
               </div>
 
               {/* Overlay: Stream Health (Bottom-Left) — Real stats or '—' */}
-              <div className="absolute bottom-3 left-3 bg-surface/85 backdrop-blur-sm border border-default/60 px-3 py-1.5 rounded-control font-mono text-[11px] text-secondary">
+              <div
+                className="absolute bottom-3 left-3 border px-3 py-1.5 rounded-control font-mono text-[11px] text-secondary shadow-sm"
+                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}
+              >
                 {streamStats ? `${streamStats.fps} FPS • ${streamStats.bitrate} • ${streamStats.codec}` : '—'}
               </div>
 
               {/* Overlay: Last Chunk (Bottom-Right) */}
-              <div className="absolute bottom-3 right-3 bg-surface/85 backdrop-blur-sm border border-default/60 px-3 py-1.5 rounded-control font-mono text-[11px] text-secondary">
+              <div
+                className="absolute bottom-3 right-3 border px-3 py-1.5 rounded-control font-mono text-[11px] text-secondary shadow-sm"
+                style={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)' }}
+              >
                 Last chunk: {lastChunkTime ? formatTimestamp(lastChunkTime / 1000) : '—'}
               </div>
             </div>

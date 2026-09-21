@@ -25,6 +25,24 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const INITIAL_HISTORY = [];
 
+// ==========================================
+// REAL YOUTUBE BRAND LOGO & MODEL ICONS
+// ==========================================
+
+function RealYouTubeLogo({ size = 24 }) {
+  const h = Math.round(size * 0.70);
+  return (
+    <svg width={size} height={h} viewBox="0 0 24 17" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0, display: 'block' }}>
+      <path 
+        d="M23.498 2.686A3.016 3.016 0 0 0 21.376.55C19.505.045 12 .045 12 .045s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 2.686C0 4.57 0 8.5 0 8.5s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 12.43 24 8.5 24 8.5s0-3.93-.502-5.814z" 
+        fill="#FF0000" 
+      />
+      <polygon points="9.5,5 15.5,8.5 9.5,12" fill="#FFFFFF" />
+    </svg>
+  );
+}
+
+
 // FormattedMessageContent Component: Cleanly formats and renders text with zero raw asterisks, hashtags, or markdown artifacts.
 function FormattedMessageContent({ content, className = '' }) {
   if (!content) return null;
@@ -281,7 +299,7 @@ function ChatInput({
 
             {/* Multi-Source Attachment Popover Menu */}
             {attachMenuOpen && (
-              <div className="cpt-attach-menu" onClick={(e) => e.stopPropagation()}>
+              <div className="cpt-attach-menu" ref={attachMenuRef} onClick={(e) => e.stopPropagation()}>
                 <div className="cpt-attach-menu-header">
                   <span>Add Media & Sources</span>
                 </div>
@@ -295,8 +313,8 @@ function ChatInput({
                     fileInputRef.current?.click();
                   }}
                 >
-                  <div className="cpt-attach-icon-wrap local">
-                    <UploadCloud size={18} />
+                  <div className="cpt-attach-icon-wrap">
+                    <UploadCloud size={20} className="cpt-attach-normal-icon" />
                   </div>
                   <div className="cpt-attach-item-text">
                     <span className="cpt-attach-item-title">Upload from Computer</span>
@@ -314,8 +332,8 @@ function ChatInput({
                       if (onOpenRtspModal) onOpenRtspModal();
                     }}
                   >
-                    <div className="cpt-attach-icon-wrap rtsp">
-                      <Cctv size={18} />
+                    <div className="cpt-attach-icon-wrap">
+                      <Cctv size={20} className="cpt-attach-normal-icon cpt-attach-rtsp-icon" />
                     </div>
                     <div className="cpt-attach-item-text">
                       <span className="cpt-attach-item-title">Connect Live RTSP Stream</span>
@@ -342,8 +360,8 @@ function ChatInput({
                     }, 50);
                   }}
                 >
-                  <div className="cpt-attach-icon-wrap youtube">
-                    <PlayCircle size={18} />
+                  <div className="cpt-attach-icon-wrap">
+                    <RealYouTubeLogo size={24} />
                   </div>
                   <div className="cpt-attach-item-text">
                     <span className="cpt-attach-item-title">YouTube Video Link</span>
@@ -369,42 +387,12 @@ function ChatInput({
                     }, 50);
                   }}
                 >
-                  <div className="cpt-attach-icon-wrap weblink">
-                    <Globe size={18} />
+                  <div className="cpt-attach-icon-wrap">
+                    <Globe size={20} className="cpt-attach-normal-icon" />
                   </div>
                   <div className="cpt-attach-item-text">
                     <span className="cpt-attach-item-title">Web Video / Stream URL</span>
                     <span className="cpt-attach-item-desc">Direct MP4, HLS (.m3u8), or cloud video URL</span>
-                  </div>
-                </button>
-
-                <div className="cpt-attach-menu-divider" />
-
-                {/* 5. Pre-loaded Sample Case */}
-                <button
-                  type="button"
-                  className="cpt-attach-menu-item"
-                  onClick={() => {
-                    setAttachMenuOpen(false);
-                    const sampleText = activeMode === 'cyber'
-                      ? "Audit CCTV_Perimeter_Sector4.mp4 for video manipulation, frame splices, and timestamp alteration."
-                      : "https://youtube.com/watch?v=k3_X_09B7mU Summarize this video into chapters and actionable takeaways.";
-                    setPromptText(sampleText);
-                    setTimeout(() => {
-                      if (textareaRef.current) {
-                        textareaRef.current.focus();
-                      }
-                    }, 50);
-                  }}
-                >
-                  <div className="cpt-attach-icon-wrap sample">
-                    <Film size={18} />
-                  </div>
-                  <div className="cpt-attach-item-text">
-                    <span className="cpt-attach-item-title">
-                      {activeMode === 'cyber' ? 'Sample Perimeter Security Audit' : 'Sample Video Intelligence Prompt'}
-                    </span>
-                    <span className="cpt-attach-item-desc">Instant pre-configured test demonstration</span>
                   </div>
                 </button>
               </div>
@@ -430,7 +418,7 @@ function ChatInput({
             className="cpt-textarea"
             placeholder={activeMode === 'cyber'
               ? "Audit video for deepfakes, frame splices, or paste video/RTSP URL..."
-              : "Ask video questions, summarize chapters, or paste video URL..."
+              : "Ask Chorus, summarize video, or paste URL..."
             }
             value={promptText}
             onChange={(e) => {
@@ -449,43 +437,53 @@ function ChatInput({
           />
 
           <div className="cpt-input-actions-right">
-            {/* Gemini-style Model Selector Pill inside Input */}
+            {/* Model Selector Pill inside Input */}
             <div className="cpt-gemini-pill-wrapper" ref={modelDropdownRef}>
               <button
                 type="button"
-                className="cpt-gemini-pill-btn"
+                className={`cpt-gemini-pill-btn ${modelDropdownOpen ? 'open' : ''}`}
                 onClick={() => setModelDropdownOpen(!modelDropdownOpen)}
                 title="Select model"
+                aria-haspopup="listbox"
+                aria-expanded={modelDropdownOpen}
               >
-                <span>{selectedModel === 'deepthink' ? 'Deepthink' : 'Flash'}</span>
-                <ChevronDown size={14} className={`cpt-gemini-pill-caret ${modelDropdownOpen ? 'open' : ''}`} />
+                <span className="cpt-gemini-pill-text">{selectedModel === 'deepthink' ? 'Deepthink' : 'Flash'}</span>
+                <ChevronDown size={13} className={`cpt-gemini-pill-caret ${modelDropdownOpen ? 'open' : ''}`} />
               </button>
 
               {modelDropdownOpen && (
-                <div className={`cpt-gemini-dropdown ${centered ? 'dropdown-down' : 'dropdown-up'}`}>
+                <div className={`cpt-gemini-dropdown ${centered ? 'dropdown-down' : 'dropdown-up'}`} role="listbox">
+                  <div className="cpt-gemini-dropdown-header">
+                    <span>Chorus Models</span>
+                  </div>
+
                   <div 
                     className={`cpt-gemini-option ${selectedModel === 'flash' ? 'active' : ''}`}
                     onClick={() => switchModel('flash')}
+                    role="option"
+                    aria-selected={selectedModel === 'flash'}
                   >
-                    <div className="cpt-gemini-check-col">
-                      {selectedModel === 'flash' && <Check size={14} />}
-                    </div>
                     <div className="cpt-gemini-option-text">
                       <div className="cpt-gemini-option-title">Chorus Flash</div>
-                      <div className="cpt-gemini-option-sub">Fastest answers</div>
+                      <div className="cpt-gemini-option-sub">Fastest speed • Real-time</div>
+                    </div>
+                    <div className="cpt-gemini-check-col">
+                      {selectedModel === 'flash' && <Check size={16} strokeWidth={2.2} />}
                     </div>
                   </div>
 
                   <div 
                     className={`cpt-gemini-option ${selectedModel === 'deepthink' ? 'active' : ''}`}
                     onClick={() => switchModel('deepthink')}
+                    role="option"
+                    aria-selected={selectedModel === 'deepthink'}
                   >
-                    <div className="cpt-gemini-check-col">
-                      {selectedModel === 'deepthink' && <Check size={14} />}
-                    </div>
                     <div className="cpt-gemini-option-text">
                       <div className="cpt-gemini-option-title">Chorus Deepthink</div>
-                      <div className="cpt-gemini-option-sub">Advanced reasoning</div>
+                      <div className="cpt-gemini-option-sub">Deep reasoning & analysis</div>
+                    </div>
+                    <div className="cpt-gemini-check-col">
+                      {selectedModel === 'deepthink' && <Check size={16} strokeWidth={2.2} />}
                     </div>
                   </div>
                 </div>
@@ -1306,13 +1304,6 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
           <div className="cpt-sidebar-header-actions">
             <button
               className="cpt-icon-btn"
-              onClick={() => setSearchOpen(!searchOpen)}
-              title={activeMode === 'general' ? "Search analyses" : "Search investigations"}
-            >
-              <Search size={16} />
-            </button>
-            <button
-              className="cpt-icon-btn"
               onClick={() => setSidebarOpen(false)}
               title="Close sidebar"
             >
@@ -1321,20 +1312,29 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
           </div>
         </div>
 
-        {/* Search Bar */}
-        {searchOpen && (
-          <div className="cpt-sidebar-search">
+        {/* Search Analyses / Investigations Bar */}
+        <div className="cpt-sidebar-search">
+          <div className="cpt-sidebar-search-box">
+            <Search size={14} className="cpt-sidebar-search-icon" />
             <input
               type="text"
-              placeholder={activeMode === 'general' ? "Search analyses..." : "Search investigations..."}
+              placeholder={activeMode === 'general' ? "Search analysis..." : "Search investigation..."}
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
+              aria-label="Search analyses"
             />
             {searchFilter && (
-              <button onClick={() => setSearchFilter('')}><X size={13} /></button>
+              <button
+                type="button"
+                className="cpt-sidebar-search-clear"
+                onClick={() => setSearchFilter('')}
+                title="Clear search"
+              >
+                <X size={12} />
+              </button>
             )}
           </div>
-        )}
+        </div>
 
         {/* New Analysis / Investigation Primary Action Button */}
         <div className="cpt-sidebar-newchat">

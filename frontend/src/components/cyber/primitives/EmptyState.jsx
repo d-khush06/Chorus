@@ -14,35 +14,37 @@ export const EmptyState = forwardRef(function EmptyState({
   const variants = {
     default: 'bg-surface border border-default',
     stage: 'bg-stage border border-default',
-    minimal: 'bg-transparent border-none',
+    minimal: 'bg-transparent border-none shadow-none',
   };
+
+  const isMinimal = variant === 'minimal';
 
   return (
     <Card
       ref={ref}
       variant={variant}
-      padding="xl"
-      className={`flex flex-col items-center text-center py-12 ${className}`}
+      padding={isMinimal ? 'none' : 'xl'}
+      className={`flex flex-col items-center text-center ${isMinimal ? 'py-7 px-4' : 'py-12'} ${className}`}
       {...props}
     >
       {icon && (
-        <div className="text-accent mb-4" aria-hidden="true">
+        <div className="text-accent mb-3" aria-hidden="true">
           {icon}
         </div>
       )}
       {children}
       {title && (
-        <h3 className="font-heading text-lg font-semibold text-primary mb-2">
+        <h3 className={`font-heading ${isMinimal ? 'text-base font-medium' : 'text-lg font-semibold'} text-primary mb-1.5`}>
           {title}
         </h3>
       )}
       {description && (
-        <p className="text-secondary text-base max-w-md">
+        <p className={`text-secondary ${isMinimal ? 'text-xs leading-relaxed max-w-sm' : 'text-sm max-w-md'}`}>
           {description}
         </p>
       )}
       {action && (
-        <div className="mt-6">
+        <div className="mt-4">
           {action}
         </div>
       )}

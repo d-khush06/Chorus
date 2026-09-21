@@ -16,12 +16,8 @@
   --color-border-strong: var(--border-strong);
 
   /* Backwards-Compatible Aliases */
-  --bg:                  var(--bg);
-  --surface:             var(--surface);
-  --surface-alt:         var(--surface-alt);
   --surface-glass:       var(--surface);
   --surface-glass-alt:   var(--surface-alt);
-  --border:              var(--border);
   --text-1:              var(--text);
   --text-2:              var(--text-secondary);
   --text-3:              var(--text-secondary);

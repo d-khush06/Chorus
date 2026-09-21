@@ -33,7 +33,7 @@ export function CyberLayout({ connectionStatus = 'standby' }) {
       </a>
 
       <header
-        className="flex items-center justify-between px-6 py-3 border-b sticky top-0 z-50"
+        className="flex items-center justify-between px-6 h-14 border-b sticky top-0 z-50"
         style={{ backgroundColor: 'var(--topbar)', borderColor: 'var(--border)' }}
       >
         <div className="flex items-center gap-3">
@@ -57,13 +57,33 @@ export function CyberLayout({ connectionStatus = 'standby' }) {
 
           <div className="h-4 w-px bg-border hidden sm:block" />
 
-          <Tabs defaultValue={activeTab} value={activeTab} onChange={handleTabChange} variant="underline" className="max-w-md justify-center">
-            {CYBER_TABS.map((tab) => (
-              <TabTrigger key={tab.value} value={tab.value}>
-                {tab.label}
-              </TabTrigger>
-            ))}
-          </Tabs>
+          <nav className="flex items-center gap-1" role="tablist" aria-label="Cyber Console Navigation">
+            {CYBER_TABS.map((tab) => {
+              const isActive = activeTab === tab.value;
+              return (
+                <button
+                  key={tab.value}
+                  role="tab"
+                  aria-selected={isActive}
+                  data-state={isActive ? 'active' : 'inactive'}
+                  onClick={() => handleTabChange(tab.value)}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-control transition-all duration-fast flex items-center justify-center border ${
+                    isActive
+                      ? 'bg-surface text-primary border-border shadow-sm'
+                      : 'bg-transparent text-secondary border-transparent hover:text-primary hover:bg-surface/50'
+                  }`}
+                  style={{
+                    borderStyle: 'solid',
+                    borderColor: isActive ? 'var(--border)' : 'transparent',
+                    backgroundColor: isActive ? 'var(--surface)' : 'transparent',
+                    color: isActive ? 'var(--text)' : 'var(--text-secondary)',
+                  }}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
         <div className="flex items-center gap-4">
@@ -71,7 +91,6 @@ export function CyberLayout({ connectionStatus = 'standby' }) {
             status={connectionStatus === 'connected' ? 'live' : (connectionStatus === 'running' ? 'warning' : 'neutral')}
             label={connectionStatus === 'connected' ? 'Connected' : (connectionStatus === 'running' ? 'Running' : 'Standby')}
             size="sm"
-            dot
             pulse={connectionStatus === 'connected' || connectionStatus === 'running'}
           />
         </div>
@@ -180,7 +199,6 @@ export function CyberLandingPage() {
             className="cursor-pointer border border-border rounded-card p-6 transition-all duration-fast hover:border-accent flex flex-col justify-between"
             style={{
               backgroundColor: 'var(--card)',
-              borderColor: 'var(--border)',
               boxShadow: 'var(--card-shadow)'
             }}
           >
@@ -214,10 +232,9 @@ export function CyberLandingPage() {
 
       {/* Recent Investigations Card from Real Cases */}
       <div
-        className="border border-border rounded-card p-6"
+        className="border border-border rounded-card p-6 transition-all duration-fast hover:border-accent"
         style={{
           backgroundColor: 'var(--card)',
-          borderColor: 'var(--border)',
           boxShadow: 'var(--card-shadow)'
         }}
       >

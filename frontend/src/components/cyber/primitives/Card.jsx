@@ -20,6 +20,11 @@ export const Card = forwardRef(function Card({ className = '', children, variant
     <div
       ref={ref}
       className={`rounded-card ${variants[variant]} ${paddings[padding]} ${className}`}
+      style={{
+        boxShadow: variant === 'stage' ? 'none' : 'var(--card-shadow)',
+        borderColor: 'var(--border)',
+        ...props.style
+      }}
       {...props}
     >
       {children}
