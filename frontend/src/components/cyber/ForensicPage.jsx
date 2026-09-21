@@ -8,6 +8,7 @@ import { EmptyState, ErrorState } from './primitives/EmptyState';
 import { Tabs, TabTrigger, TabContent } from './primitives/Tabs';
 import { StageTracker } from './StageTracker';
 import { computeVerdict } from '../../utils/verdict';
+import { VideoInsightsPanel } from '../VideoInsightsPanel';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -860,7 +861,7 @@ export function ForensicPage() {
               ))}
             </div>
 
-            {/* Findings List: Clicking seeks player */}
+                {/* Findings List: Clicking seeks player */}
             <div className="space-y-2">
               <div className="text-xs font-semibold text-secondary uppercase font-mono">
                 Recorded Evidentiary Findings (Click to Seek):
@@ -889,6 +890,13 @@ export function ForensicPage() {
                 </div>
               )}
             </div>
+
+            {/* ── VideoEngine Insights ── */}
+            <VideoInsightsPanel
+              engine_insights={report?.engine_insights || null}
+              loading={status === 'running'}
+              onSeek={(ts) => seekToTime(ts)}
+            />
           </>
         )}
       </Card>

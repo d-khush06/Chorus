@@ -86,6 +86,12 @@ and events mentioned across all modalities.
 5. Resolve conflicts: If vision and speech contradict each other, note the conflict \
 and provide your best reconciled interpretation.
 
+IMPORTANT RULES:
+- Output ONLY a valid JSON object. Nothing else.
+- Do NOT use <tool_call> tags. Do NOT call any tools or functions.
+- Do NOT output code blocks or markdown.
+- Just return the raw JSON object directly.
+
 Return ONLY this JSON structure, no other text:
 {
   "key_entities": {
@@ -113,6 +119,12 @@ Your job:
 what is present in the input).
 2. Answer the user's question with specific references to the timeline.
 3. Identify the most important moment/scene in the video and explain why.
+
+IMPORTANT RULES:
+- Output ONLY a valid JSON object. Nothing else.
+- Do NOT use <tool_call> tags. Do NOT call any tools or functions.
+- Do NOT output code blocks or markdown.
+- Just return the raw JSON object directly.
 
 Return ONLY this JSON structure, no other text:
 {
@@ -149,6 +161,12 @@ Rules:
 - Highlight anything unusual, interesting, or important.
 - Keep the executive summary to 2-3 sentences maximum.
 - The detailed_analysis should be thorough — at least 5 bullet points.
+
+IMPORTANT RULES:
+- Output ONLY a valid JSON object. Nothing else.
+- Do NOT use <tool_call> tags. Do NOT call any tools or functions.
+- Do NOT output code blocks or markdown.
+- Just return the raw JSON object directly.
 
 Return ONLY this JSON structure, no other text:
 {
@@ -193,6 +211,12 @@ this report may be used by security professionals.
 - Clearly distinguish CONFIRMED findings from SUSPECTED findings.
 - Never speculate without labeling it as [SUSPECTED].
 - Flag any evidence that may require human expert review.
+
+CRITICAL RULES:
+- Output ONLY a valid JSON object. Nothing else.
+- Do NOT use <tool_call> tags. Do NOT call any tools or functions.
+- Do NOT output code blocks or markdown.
+- Just return the raw JSON object directly.
 
 Return ONLY this JSON structure, no other text:
 {
@@ -359,6 +383,62 @@ def _fused_to_text(fused: dict, max_chars: int = 8000, mode: str = "general") ->
                 )
             lines.append("")
 
+    # ── Engine Profile (Deterministic Signals) ────────────────────────────────
+    engine_profile = fused.get("engine_profile")
+    if engine_profile:
+        lines.append("=== ENGINE PROFILE (Deterministic Signals) ===")
+        # Use VideoProfile.summary_for_llm() if available (imported lazily)
+        try:
+            from video_engine.schema import VideoProfile
+            _tmp_profile = VideoProfile(run_id="llm_context")
+            _tmp_profile.data.update(engine_profile)
+            lines.append(_tmp_profile.summary_for_llm())
+        except Exception:
+            # Fallback: structured text from dict
+            tech = engine_profile.get("technical", {})
+            motion = engine_profile.get("motion", {})
+            shots = engine_profile.get("shots", {})
+            meta = engine_profile.get("metadata", {})
+            text_codes = engine_profile.get("text_and_codes", {})
+            faces = engine_profile.get("faces", {})
+            objects = engine_profile.get("objects", {})
+
+            lines.append(f"Resolution: {meta.get('width', '?')}x{meta.get('height', '?')} @ {meta.get('fps', '?')} fps")
+            lines.append(f"Duration: {meta.get('duration_seconds', '?')}s  Codec: {meta.get('codec', '?')}")
+            lines.append(f"Avg blur (Laplacian var): {round(tech.get('avg_blur', 0), 1)}")
+            lines.append(f"Avg exposure: {round(tech.get('avg_exposure', 0), 1)}  Avg contrast: {round(tech.get('avg_contrast', 0), 1)}")
+            lines.append(f"Black frames: {tech.get('black_frame_count', 0)}  Frozen frames: {tech.get('frozen_frame_count', 0)}")
+            lines.append(f"Shots detected: {shots.get('cut_count', 0)}")
+            avg_act = motion.get('avg_activity', 0)
+            peaks = motion.get('peaks', [])
+            lines.append(f"Avg activity: {round(avg_act * 100, 1)}%  Motion peaks at: {peaks[:8]}")
+
+            texts = text_codes.get('detected_texts', [])
+            codes = text_codes.get('detected_codes', [])
+            parts = [t['text'] for t in texts[:5]] + [c['data'] for c in codes[:5]]
+            if parts:
+                lines.append(f"On-screen text/codes: {' | '.join(p for p in parts if p)[:300]}")
+
+            if tech.get('avg_blur', 999) < 50:
+                lines.append("WARNING: video is blurry (avg Laplacian variance < 50)")
+            if tech.get('black_frame_count', 0) > 0:
+                lines.append(f"WARNING: {tech['black_frame_count']} black frames detected")
+            if tech.get('frozen_frame_count', 0) > 5:
+                lines.append(f"WARNING: {tech['frozen_frame_count']} frozen frames detected")
+
+            if faces.get("status") == "ok":
+                lines.append(f"Faces detected (total instances): {faces.get('total_detected_instances', 0)}")
+            else:
+                lines.append(f"Face detection: {faces.get('status', 'unavailable')} - {faces.get('reason', '')}")
+
+            if objects.get("status") == "ok":
+                lines.append(f"Objects detected: {objects.get('class_counts', {})}")
+            else:
+                lines.append(f"Object detection: {objects.get('status', 'unavailable')}")
+
+        lines.append("")
+
+
     result = "\n".join(lines)
     # Truncate to max_chars to stay within context window
     if len(result) > max_chars:
@@ -378,8 +458,21 @@ def _call_text_brain(system_prompt: str, user_content: str) -> dict:
         model, tokenizer = load_text_model()
         device = "cuda" if torch.cuda.is_available() else "cpu"
 
+        # Append anti-hallucination instruction to prevent tool_call generation
+        anti_hallucination = (
+            "\n\n<|anti_hallucination|>\n"
+            "CRITICAL INSTRUCTION - READ CAREFULLY:\n"
+            "- You MUST output ONLY a valid JSON object. Nothing else.\n"
+            "- You MUST NOT use <tool_call> tags.\n"
+            "- You MUST NOT call any tools, functions, or APIs.\n"
+            "- You MUST NOT output code blocks, markdown, or any text outside the JSON.\n"
+            "- Just return the raw JSON object directly.\n"
+            "- If you are unsure about a value, use null or an empty string.\n"
+            "</|anti_hallucination|>"
+        )
+
         messages = [
-            {"role": "system", "content": system_prompt},
+            {"role": "system", "content": system_prompt + anti_hallucination},
             {"role": "user",   "content": user_content},
         ]
 
@@ -396,15 +489,63 @@ def _call_text_brain(system_prompt: str, user_content: str) -> dict:
 
         # Parse JSON
         raw = output_text.strip()
+        
+        # Strip any tool_call tags and their JSON content (model hallucination)
+        import re
+        has_tool_calls = bool(re.search(r'<tool_call>', raw))
+        raw = re.sub(r'<tool_call>.*?</tool_call>', '', raw, flags=re.DOTALL)
+        raw = re.sub(r'<tool_call>.*', '', raw, flags=re.DOTALL)  # unclosed tag
+        raw = raw.strip()
+        
         if "```json" in raw:
             raw = raw.split("```json")[1].split("```")[0].strip()
         elif "```" in raw:
             raw = raw.split("```")[1].split("```")[0].strip()
 
         try:
-            return json.loads(raw)
+            result = json.loads(raw)
+            # Validate it's not an empty object or just error
+            if result and any(k in result for k in ["executive_summary", "summary", "overview", "detailed_analysis", "key_findings", "enriched_summary"]):
+                return result
+            # Has content but wrong structure - wrap it
+            if result and len(str(result)) > 50:
+                return {"raw_output": json.dumps(result, ensure_ascii=False)}
         except json.JSONDecodeError:
-            return {"raw_output": output_text}
+            pass
+        
+        # If we stripped tool_calls and have nothing left, retry with explicit instruction
+        cleaned = raw.strip()
+        if has_tool_calls and (not cleaned or len(cleaned) < 10):
+            print("  [Domain Output] ⚠️  Model hallucinated tool_call — retrying with explicit JSON instruction…", flush=True)
+            retry_messages = [
+                {"role": "system", "content": system_prompt + "\n\nCRITICAL: Do NOT use <tool_call> tags. Output ONLY a valid JSON object. No tool calls, no function calls, no code blocks."},
+                {"role": "user",   "content": user_content + "\n\nIMPORTANT: Respond with ONLY a valid JSON object. Do not call any tools or functions."},
+            ]
+            retry_text = tokenizer.apply_chat_template(retry_messages, tokenize=False, add_generation_prompt=True)
+            retry_inputs = tokenizer([retry_text], return_tensors="pt").to(device)
+            retry_generated = model.generate(**retry_inputs, max_new_tokens=1024, do_sample=False)
+            retry_trimmed = [out[len(inp):] for inp, out in zip(retry_inputs.input_ids, retry_generated)]
+            retry_output = tokenizer.batch_decode(retry_trimmed, skip_special_tokens=True)[0].strip()
+            # Strip tool calls again
+            retry_output = re.sub(r'<tool_call>.*?</tool_call>', '', retry_output, flags=re.DOTALL)
+            retry_output = re.sub(r'<tool_call>.*', '', retry_output, flags=re.DOTALL).strip()
+            if "```json" in retry_output:
+                retry_output = retry_output.split("```json")[1].split("```")[0].strip()
+            elif "```" in retry_output:
+                retry_output = retry_output.split("```")[1].split("```")[0].strip()
+            try:
+                retry_result = json.loads(retry_output)
+                if retry_result and len(str(retry_result)) > 20:
+                    return retry_result
+            except json.JSONDecodeError:
+                pass
+            if retry_output and len(retry_output) > 10:
+                return {"raw_output": retry_output}
+            return {"raw_output": "", "_stripped_tool_calls": True, "_retry_failed": True}
+        
+        if not cleaned or len(cleaned) < 10:
+            return {"raw_output": "", "_stripped_tool_calls": True}
+        return {"raw_output": cleaned}
 
     except ImportError as e:
         return {"error": f"Text Brain not available: {e}"}

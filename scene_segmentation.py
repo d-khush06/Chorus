@@ -443,6 +443,16 @@ def _detect_rtsp(
     stream_offset: float  = 0.0
     chunk_index:   int    = 0
 
+    # Auto-map Wowza Cloud RTSP ingest entrypoints to direct native HLS playback
+    if "cloud.wowza.com" in rtsp_url and (rtsp_url.startswith("rtsp://") or rtsp_url.startswith("rtsps://")):
+        try:
+            from urllib.parse import urlparse
+            u = urlparse(rtsp_url)
+            rtsp_url = f"http://{u.netloc}{u.path}{'' if u.path.endswith('.m3u8') else '/playlist.m3u8'}"
+            log.info(f"Auto-mapped Wowza Cloud RTSP to native HLS: {rtsp_url}")
+        except Exception:
+            pass
+
     cap = cv2.VideoCapture(rtsp_url)
     if not cap.isOpened():
         raise RuntimeError(

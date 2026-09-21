@@ -810,6 +810,8 @@ def run_full_pipeline(
     video_id: Optional[str] = None,
     playlist_index: Optional[int] = None,
     playlist_total: Optional[int] = None,
+    case_id: Optional[str] = None,
+    entry_point: Optional[str] = "forensic",
 ) -> dict:
     """
     Run the complete Chorus Phase 1 general-mode pipeline.
@@ -940,6 +942,14 @@ def run_full_pipeline(
 
     if url and not local_video_path:
         print(f"  [Pipeline] URL source detected — Source: {url}", flush=True)
+        if "cloud.wowza.com" in url and (url.startswith("rtsp://") or url.startswith("rtsps://")):
+            try:
+                from urllib.parse import urlparse
+                u = urlparse(url)
+                url = f"http://{u.netloc}{u.path}{'' if u.path.endswith('.m3u8') else '/playlist.m3u8'}"
+                print(f"  [Pipeline] 🔄 Wowza Cloud stream auto-mapped to native HLS endpoint: {url}", flush=True)
+            except Exception:
+                pass
         try:
             from chorus_input import download_youtube_video
             if "youtube.com" in url or "youtu.be" in url:
@@ -1141,6 +1151,49 @@ def run_full_pipeline(
         print("  [Pipeline] ⚠️  Step 6 (Scene Segmentation) skipped.", flush=True)
         _emit_stage_skip("scene_segmentation", "not in tool calls or no video")
 
+    # ── Step 6b: Video Engine (Deterministic Signal Layer) ────────────────
+    _emit_stage_start("video_engine")
+    engine_profile = None
+    engine_source = local_video_path if (local_video_path and os.path.exists(local_video_path)) else (url if source_type == "live_rtsp" else None)
+    
+    if engine_source:
+        print(f"\n  [Pipeline] ▶ Step 6b — Deterministic Video Engine (Source: {engine_source})", flush=True)
+        try:
+            from video_engine import (
+                VideoEngine, TechnicalAnalyzer, MotionAnalyzer, ShotsAnalyzer,
+                ObjectAnalyzer, FaceAnalyzer, TextAndCodeAnalyzer, SimilarityAnalyzer,
+                VideoProfile
+            )
+            
+            engine = VideoEngine(engine_source)
+            engine.add_analyzer(TechnicalAnalyzer())
+            engine.add_analyzer(MotionAnalyzer(compute_heatmap=False))
+            engine.add_analyzer(ShotsAnalyzer(mode=mode))
+            engine.add_analyzer(TextAndCodeAnalyzer())
+            if mode == "cyber":
+                engine.add_analyzer(ObjectAnalyzer())
+                if governance_approved:
+                    engine.add_analyzer(FaceAnalyzer())
+                engine.add_analyzer(SimilarityAnalyzer())
+                
+            results = engine.run()
+            profile = VideoProfile(run_id=os.path.basename(engine_source) if local_video_path else "rtsp_stream")
+            profile.populate(results)
+            engine_profile = profile.data
+            result["engine_profile"] = engine_profile
+            
+            print(f"  [Pipeline] ✅ Step 6b — Engine complete. Processed {results['metadata']['total_frames']} frames.", flush=True)
+            _emit_stage_complete("video_engine", {"frames": results['metadata']['total_frames']})
+        except ImportError:
+            print("  [Pipeline] ⚠️  Step 6b skipped — video_engine module unavailable.", flush=True)
+            _emit_stage_skip("video_engine", "module unavailable")
+        except Exception as exc:
+            print(f"  [Pipeline] ⚠️  Step 6b error: {exc}", flush=True)
+            _emit_stage_complete("video_engine", {"error": str(exc)})
+    else:
+        print("  [Pipeline] ⚠️  Step 6b (Video Engine) skipped.", flush=True)
+        _emit_stage_skip("video_engine", "no video file")
+
     # ── Step 7a: ASR Transcription ────────────────────────────────────────
     _emit_stage_start("asr_transcription")
     asr_result = None
@@ -1297,6 +1350,11 @@ def run_full_pipeline(
     except Exception as exc:
         print(f"  [Pipeline] ⚠️  Step 9 error: {exc}", flush=True)
         _emit_stage_complete("domain_output", {"error": str(exc)})
+
+    acoustic_result = None
+    geo_result = None
+    face_reid_result = None
+    alert_result = None
 
     if mode == "cyber":
         # ── Step C1: Acoustic Event Detection ─────────────────────────────
@@ -1481,6 +1539,7 @@ def run_full_pipeline(
             face_reid_result=face_reid_result,
             alert_result=alert_result,
             verification_result=verification_result,
+            engine_profile=engine_profile,
         )
         result["fusion_result"] = fused
         print("  [Pipeline] ✅ Step 8 — Fusion complete.", flush=True)
@@ -2220,6 +2279,10 @@ def _build_parser():
     p.add_argument("--save-output", "--output-file", default="playlist_analysis_results.json",
                    dest="output_file", metavar="PATH",
                    help="File path to save progressive checkpoints and final analysis results (default: playlist_analysis_results.json).")
+    p.add_argument("--case-id", default=None, dest="case_id",
+                   help="Case ID for forensic tracking / database linking.")
+    p.add_argument("--entry-point", default="forensic", dest="entry_point",
+                   help="Analysis entry point: forensic, general, or live.")
 
     # Legacy mode
     p.add_argument("--legacy",           action="store_true",
@@ -2331,6 +2394,8 @@ if __name__ == "__main__":
                 max_concurrent      = args.max_concurrent,
                 batch_size          = args.batch_size,
                 output_file         = args.output_file,
+                case_id             = args.case_id,
+                entry_point         = args.entry_point,
             )
             if args.output_file and not result.get("batch_type"):
                 try:

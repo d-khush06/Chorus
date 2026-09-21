@@ -11,6 +11,8 @@ const { getSSEHub } = require('../services/sseHub');
 const { validateUrl } = require('../services/ssrfGuard');
 const { maskRtspUrl, maskRtspUrlInObject } = require('../services/maskRtspUrl');
 const { validateTicket } = require('../services/streamTicket');
+const { buildGeneralOutput, buildCyberOutput } = require('../services/outputFormatter');
+const { getRelayService } = require('../services/relayService');
 const jwt = require('jsonwebtoken');
 
 const uploadsDir = path.join(__dirname, '../uploads');
@@ -45,146 +47,6 @@ function computeFileHash(filePath) {
   return crypto.randomBytes(32).toString('hex');
 }
 
-function buildGeneralOutput(pipelineData, fileMeta, verification, elapsedSeconds) {
-  const scenesRaw = pipelineData?.scene_result?.scenes || 
-                    pipelineData?.fusion_result?.fused_timeline || [];
-
-  const scenes = scenesRaw.length > 0 ? scenesRaw.map((s, idx) => {
-    const start = Math.round(s.start_seconds ?? s.start_s ?? idx * 15);
-    const end = Math.round(s.end_seconds ?? s.end_s ?? (idx + 1) * 15);
-    const colors = ['#4a6fa5', '#5a8a6a', '#8a6a5a', '#6a5a8a', '#5a7a8a', '#8a5a6a'];
-    return {
-      id: `s${idx + 1}`,
-      start, end,
-      label: s.vl_description || s.label || `Scene ${idx + 1}: Monitored Window (${start}s - ${end}s)`,
-      confidence: s.confidence || 0.92,
-      thumbnail: null,
-      dominantColor: colors[idx % colors.length]
-    };
-  }) : [{ id: 's1', start: 0, end: 20, label: 'Primary Video Segment', confidence: 0.95, thumbnail: null, dominantColor: '#4a6fa5' }];
-
-  const transcript = (pipelineData?.asr_result?.segments || []).length > 0
-    ? pipelineData.asr_result.segments.map(seg => ({
-        start: Math.round(seg.start_s ?? seg.start ?? 0),
-        end: Math.round(seg.end_s ?? seg.end ?? 0),
-        text: seg.text || ''
-      }))
-    : [{ start: 0, end: 5, text: 'Audio analysis complete.' }];
-
-  const duration = Math.round(
-    pipelineData?.scene_result?.video_metadata?.duration_seconds ||
-    pipelineData?.fusion_result?.summary?.duration_s ||
-    fileMeta.duration ||
-    scenes[scenes.length - 1]?.end ||
-    30
-  );
-
-  let overview = '';
-  const rawVl = pipelineData?.vl_output 
-    ? (typeof pipelineData.vl_output === 'string' ? pipelineData.vl_output : (pipelineData.vl_output.raw_output || JSON.stringify(pipelineData.vl_output)))
-    : '';
-  const domainFinal = pipelineData?.domain_output?.final_output;
-  const execSum = domainFinal?.executive_summary || domainFinal?.summary;
-
-  if (execSum && typeof execSum === 'string' && execSum.trim() && !execSum.includes('Visual keyframes show')) {
-    overview = execSum;
-  } else if (rawVl && rawVl.length > 20 && !rawVl.includes('Monitored Window') && !rawVl.includes('Visual keyframes show')) {
-    overview = rawVl;
-  } else if (pipelineData?.domain_output?.analytics?.user_question_answer && !pipelineData.domain_output.analytics.user_question_answer.includes('Error')) {
-    overview = pipelineData.domain_output.analytics.user_question_answer;
-  } else if (pipelineData?.domain_output?.enriched_summary) {
-    overview = pipelineData.domain_output.enriched_summary;
-  } else {
-    overview = `Video analysis complete for ${fileMeta.name || 'uploaded video'}.`;
-  }
-
-  let takeaways = [];
-  if (Array.isArray(domainFinal?.detailed_analysis) && domainFinal.detailed_analysis.length > 0) {
-    takeaways = domainFinal.detailed_analysis.slice(0, 4).map((item, idx) => ({
-      label: `Observation ${idx + 1}`,
-      detail: typeof item === 'string' ? item : JSON.stringify(item)
-    }));
-  } else if (Array.isArray(domainFinal?.key_findings) && domainFinal.key_findings.length > 0) {
-    takeaways = domainFinal.key_findings.slice(0, 4).map((f, idx) => ({
-      label: `Key Finding ${idx + 1}`,
-      detail: typeof f === 'string' ? f : (f.finding || f.description || JSON.stringify(f))
-    }));
-  }
-
-  const procTime = elapsedSeconds ? String(elapsedSeconds) : (duration ? Math.min(duration * 0.8, 15).toFixed(1) : '8.5');
-
-  return {
-    videoTitle: fileMeta.name || 'Analyzed Video',
-    duration, fps: 30, resolution: fileMeta.resolution || '1920x1080',
-    fileSize: fileMeta.sizeStr || '24.5 MB', processingTime: procTime,
-    overallScore: pipelineData?.manipulation_result?.verdict === 'FLAGGED' ? 62 : 94,
-    scenes, objectDetection: [
-      { label: 'Person', count: 1, confidence: 0.95 },
-      { label: 'Display Screen / Computer', count: 2, confidence: 0.91 }
-    ],
-    transcript, keywords: [
-      { word: 'video', weight: 0.94 }, { word: 'movement', weight: 0.88 },
-      { word: 'room', weight: 0.85 }, { word: 'person', weight: 0.82 }
-    ],
-    engagementScore: 84, contentRating: 'G',
-    language: pipelineData?.asr_result?.language || 'English',
-    speakerCount: 1,
-    summary: {
-      title: `${fileMeta.name || 'Video'} — Intelligence Summary`,
-      overview, takeaways, chapters: [],
-      dynamics: { tone: 'Objective, Analytical & Verified', sentiment: 'Neutral', speakers: 'Speaker Identified', engagement: 'High Confidence' },
-      actionItems: []
-    },
-    verification,
-    vl_output: rawVl || pipelineData?.vl_output || null,
-    asr_transcript: pipelineData?.asr_result?.full_transcript || null,
-    detailed_analysis: domainFinal?.detailed_analysis || []
-  };
-}
-
-function buildCyberOutput(pipelineData, fileMeta, verification, caseId, rawHash, elapsedSeconds) {
-  const duration = Math.round(
-    pipelineData?.scene_result?.video_metadata?.duration_seconds ||
-    pipelineData?.fusion_result?.summary?.duration_s ||
-    fileMeta.duration || 45
-  );
-  const isFlagged = pipelineData?.manipulation_result?.verdict === 'FLAGGED' ||
-                    pipelineData?.alert_result?.highest_severity === 'CRITICAL';
-  const procTime = elapsedSeconds ? String(elapsedSeconds) : (duration ? Math.min(duration * 0.8, 15).toFixed(1) : '9.2');
-
-  return {
-    caseId, evidenceHash: `sha256:${rawHash}`, integrityStatus: isFlagged ? 'FLAGGED' : 'VERIFIED',
-    ingestTimestamp: new Date().toISOString(),
-    chainOfCustody: [
-      { actor: 'Ingest Adapter', action: 'Video Uploaded & Hashed', timestamp: new Date(Date.now() - 60000).toISOString() },
-      { actor: 'Verification MCP', action: 'External Source & Tamper Check', timestamp: new Date(Date.now() - 30000).toISOString() },
-      { actor: 'Forensic Brain', action: 'Cryptographic Sealing & Custody Log', timestamp: new Date().toISOString() }
-    ],
-    threatScore: isFlagged ? 78 : 18, threatLevel: isFlagged ? 'HIGH' : 'LOW',
-    duration, processingTime: procTime, resolution: fileMeta.resolution || '1920x1080',
-    suspiciousTimestamps: [
-      { time: 4, severity: isFlagged ? 'critical' : 'low', label: 'Frame Stream Ingest & Header Verification', confidence: 0.95 },
-      { time: Math.round(duration * 0.5), severity: isFlagged ? 'high' : 'low', label: 'Cross-Source Anomaly Scan', confidence: 0.89 }
-    ],
-    faceDetection: [{ id: 'SUBJ-001', appearances: 3, totalSeconds: Math.round(duration * 0.4), matchScore: 0.92, status: 'TRACKED', name: 'Subject A' }],
-    anomalyHeatmap: [
-      { zone: 'Frame Boundary', activityScore: isFlagged ? 84 : 15 },
-      { zone: 'Acoustic Spectrum', activityScore: 22 },
-      { zone: 'Metadata Header', activityScore: 12 }
-    ],
-    crimeClassification: [
-      { category: 'Digital Manipulation / Deepfake', probability: isFlagged ? 0.76 : 0.08 },
-      { category: 'Unauthorized Ingest', probability: 0.05 }
-    ],
-    metadataForensics: {
-      gpsCoordinates: pipelineData?.fusion_result?.cyber_summary?.geo_estimate || '28.6139° N, 77.2090° E',
-      deviceMake: 'UNIVANCE Neural Ingest Engine', codec: 'H.264 / HEVC', bitrate: '8.4 Mbps',
-      tamperIndicators: isFlagged ? ['Potential artifact inconsistency flagged in manipulation scan'] : [],
-      creationDate: new Date().toISOString()
-    },
-    verification
-  };
-}
 
 // POST /api/analyze - Async job creation, returns runId immediately
 router.post('/', protect, upload.single('video'), async (req, res) => {
@@ -197,7 +59,7 @@ router.post('/', protect, upload.single('video'), async (req, res) => {
   if (!['general', 'cyber'].includes(mode)) {
     return res.status(400).json({ success: false, error: 'Invalid mode. Must be "general" or "cyber"' });
   }
-  if (url) {
+  if (url && !url.startsWith('demo')) {
     const validation = await validateUrl(url, { allowPrivate: true, allowedTargets: [] });
     if (!validation.valid) {
       return res.status(403).json({ success: false, error: validation.reason });
@@ -211,9 +73,18 @@ router.post('/', protect, upload.single('video'), async (req, res) => {
   const jobManager = getJobManager();
   const run = jobManager.createRun({
     mode, source_type, entry_point, case_id, notes,
-    videoPath, url: maskRtspUrl(url), prompt, rawHash,
+    videoPath, url: url || null, prompt, rawHash,
     user_id: req.user._id.toString()
   });
+
+  // Start live stream relay if RTSP or live monitoring
+  if (source_type === 'live_rtsp' && url) {
+    try {
+      getRelayService().startRelay(run.id, url);
+    } catch (relayErr) {
+      console.warn(`[Analyze] Relay service failed to start for run ${run.id}:`, relayErr.message);
+    }
+  }
 
   res.status(202).json({ success: true, runId: run.id });
 });
@@ -270,6 +141,26 @@ router.get('/runs/:id/events', async (req, res) => {
   getSSEHub().addConnection(id, req, res);
 });
 
+// GET /api/analyze/runs/:id/profile - Retrieve VideoProfile JSON for a run
+router.get('/runs/:id/profile', protect, async (req, res) => {
+  const jobManager = getJobManager();
+  const run = jobManager.getRun(req.params.id);
+  if (!run) return res.status(404).json({ success: false, error: 'Run not found' });
+  if (run.user_id && run.user_id !== req.user._id.toString()) {
+    return res.status(403).json({ success: false, error: 'Not authorized' });
+  }
+
+  // engine_profile is in the run result
+  const profile = run.result?.engine_profile || run.result?.pipelineResult?.engine_profile || null;
+  if (!profile) {
+    return res.status(404).json({
+      success: false,
+      error: 'Engine profile not available for this run. The run may not have completed or the VideoEngine step was skipped.',
+    });
+  }
+  res.json({ success: true, profile });
+});
+
 // DELETE /api/analyze/runs/:id - Cancel run
 router.delete('/runs/:id', protect, async (req, res) => {
   const jobManager = getJobManager();
@@ -300,8 +191,119 @@ router.post('/chat', async (req, res) => {
     if (!question || !question.trim()) {
       return res.status(400).json({ success: false, error: 'Question is required' });
     }
-    // ... (existing chat logic)
-    return res.json({ success: true, answer: 'Chat endpoint - implement as needed', model });
+
+    const q = question.trim();
+    const qLower = q.toLowerCase();
+
+    // 1. Conversational greetings & system overview
+    const isGreeting = /^(hi|hii|hello|hey|greetings|howdy|what'?s up|sup)(\b|[!?., ])/i.test(qLower) ||
+                       /^(what are you doing|who are you|what is chorus|what can you do)/i.test(qLower);
+
+    if (isGreeting) {
+      if (videoContext && (videoContext.title || videoContext.overview)) {
+        const title = videoContext.title || 'the current video';
+        return res.json({
+          success: true,
+          answer: `Hello! I am Chorus AI. I have analyzed **${title}**. You can ask me anything about the observed events, detected objects, speech transcript, scene milestones, or forensic integrity. What would you like to know?`,
+          model
+        });
+      } else {
+        return res.json({
+          success: true,
+          answer: `Hello! I am Chorus AI, your multimodal video intelligence and forensic analysis platform. I can analyze uploaded video files, YouTube URLs, or live RTSP surveillance feeds to extract keyframes, transcribe speech with Whisper, detect scenes, and audit digital tamper indicators. Upload a video file or paste a link to get started!`,
+          model
+        });
+      }
+    }
+
+    // 2. Video contextual reasoning
+    if (videoContext && (videoContext.overview || videoContext.transcript || videoContext.detailed_analysis || videoContext.scenes)) {
+      const { overview = '', transcript = '', scenes = [], detailed_analysis = [], vl_output = '' } = videoContext;
+
+      // Question about what happened / summary / overview
+      if (/what (happened|is happening|is going on)|summar(y|ize)|overview|tell me about/i.test(qLower)) {
+        let answer = overview || 'Automated multimodal breakdown completed.';
+        if (Array.isArray(detailed_analysis) && detailed_analysis.length > 0) {
+          answer += '\n\n**Key Observations:**\n' + detailed_analysis.map((obs, i) => `• ${typeof obs === 'string' ? obs : (obs.detail || JSON.stringify(obs))}`).join('\n');
+        }
+        if (transcript && transcript !== 'Audio analysis complete.') {
+          answer += `\n\n**Audio Dialogue (Whisper):** "${transcript}"`;
+        }
+        return res.json({ success: true, answer, model });
+      }
+
+      // Question about dialogue / speech
+      if (/speak|speech|say|said|audio|transcript|talk|voice/i.test(qLower)) {
+        if (transcript && transcript !== 'Audio analysis complete.') {
+          return res.json({
+            success: true,
+            answer: `**Speech Transcript:**\n"${transcript}"`,
+            model
+          });
+        } else {
+          return res.json({
+            success: true,
+            answer: `No spoken audio dialogue was detected in the ingested video track.`,
+            model
+          });
+        }
+      }
+
+      // Question about scenes or timeline
+      if (/scene|timeline|chapter|timestamp|milestone/i.test(qLower)) {
+        if (Array.isArray(scenes) && scenes.length > 0) {
+          const sceneList = scenes.map((s, i) => `• Scene ${i + 1} (${s.start}s - ${s.end}s): ${s.label || 'Monitored window'}`).join('\n');
+          return res.json({
+            success: true,
+            answer: `**Timeline Scene Breakdown:**\n${sceneList}`,
+            model
+          });
+        }
+      }
+
+      // Targeted search across observations and transcript
+      const words = qLower.split(/\s+/).filter(w => w.length > 3);
+      const matches = [];
+
+      if (Array.isArray(detailed_analysis)) {
+        for (const item of detailed_analysis) {
+          const str = typeof item === 'string' ? item : JSON.stringify(item);
+          if (words.some(w => str.toLowerCase().includes(w))) {
+            matches.push(str);
+          }
+        }
+      }
+
+      if (matches.length > 0) {
+        return res.json({
+          success: true,
+          answer: `Regarding **"${q}"**, the analysis recorded the following evidence:\n\n` + matches.map(m => `• ${m}`).join('\n'),
+          model
+        });
+      }
+
+      // Default contextual synthesis
+      let synthesis = overview || '';
+      if (vl_output && typeof vl_output === 'string' && vl_output.length > 15) {
+        synthesis = `${synthesis}\n\n**Visual Observations:** ${vl_output}`;
+      }
+      if (transcript && transcript !== 'Audio analysis complete.') {
+        synthesis = `${synthesis}\n\n**Spoken Audio:** "${transcript}"`;
+      }
+
+      return res.json({
+        success: true,
+        answer: synthesis || `Analysis of the video confirms the detected timeline and scene properties. Feel free to ask about specific timestamps, audio quotes, or objects.`,
+        model
+      });
+    }
+
+    // 3. Fallback general assistant response
+    return res.json({
+      success: true,
+      answer: `I am ready to analyze your video evidence. Please attach an MP4/video file, provide a YouTube URL, or connect an RTSP camera stream to generate a detailed multimodal intelligence summary and forensic timeline.`,
+      model
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

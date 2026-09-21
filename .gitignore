@@ -17,6 +17,10 @@ datasets/
 *.avi
 *.mov
 
+# Runtime data (run history, HLS streams, cases)
+backend/data/
+backend/public/live/
+
 # Logs & temporary outputs
 audit_logs/
 text_output.*

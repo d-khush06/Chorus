@@ -855,6 +855,7 @@ def fuse_pipeline_outputs(
     face_reid_result: Optional[dict] = None,
     alert_result: Optional[dict] = None,
     verification_result: Optional[dict] = None,
+    engine_profile: Optional[dict] = None,
 ) -> dict:
     """
     Merge all agent outputs into one unified fused timeline.
@@ -1050,6 +1051,7 @@ def fuse_pipeline_outputs(
         "fused_at": fused_at,
         "error": None,
         "verification_result": verification_result,
+        "engine_profile": engine_profile,
     }
     if cyber_summary:
         result["cyber_summary"] = cyber_summary
@@ -1076,6 +1078,7 @@ def fuse_from_payload(
     face_reid_result: Optional[dict] = None,
     alert_result: Optional[dict] = None,
     verification_result: Optional[dict] = None,
+    engine_profile: Optional[dict] = None,
 ) -> dict:
     """
     Convenience wrapper: builds fuse_pipeline_outputs call from a ChorusPayload.
@@ -1112,6 +1115,7 @@ def fuse_from_payload(
         face_reid_result=face_reid_result,
         alert_result=alert_result,
         verification_result=verification_result,
+        engine_profile=engine_profile,
     )
 
 

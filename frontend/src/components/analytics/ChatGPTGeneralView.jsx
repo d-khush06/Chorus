@@ -882,6 +882,54 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
         setIsThinking(true);
       }
 
+      const isUrl = actualPrompt.startsWith('http://') || actualPrompt.startsWith('https://') || actualPrompt.startsWith('rtsp://');
+      const hasVideoTarget = !!pendingFile || isUrl || isLiveStream;
+
+      // ─── CONVERSATIONAL MODE: NO VIDEO OR URL PROVIDED ───
+      if (!hasVideoTarget) {
+        let reply = '';
+        try {
+          const chatRes = await chatAboutVideo({
+            question: actualPrompt,
+            model: effectiveModel
+          });
+          if (chatRes && chatRes.success && chatRes.answer) {
+            reply = chatRes.answer;
+          }
+        } catch (err) {
+          console.warn('[Chorus UI] Conversational chat error:', err.message);
+        }
+
+        if (!reply) {
+          reply = `Hello! I am Chorus AI Assistant. I can analyze uploaded video files, YouTube URLs, or live RTSP streams to extract scene keyframes, speech transcripts, motion dynamics, and tamper anomalies. Upload a video file or paste a link to get started!`;
+        }
+
+        const assistantMsg = {
+          id: 'msg-' + (Date.now() + 1),
+          sender: 'assistant',
+          isSummary: false,
+          modelUsed: effectiveModel,
+          thoughtTime: effectiveModel === 'deepthink' ? '1.5s' : null,
+          thoughtProcess: effectiveModel === 'deepthink' ? [
+            `Interpreted user intent: "${actualPrompt}".`,
+            "Consulted Chorus knowledge base and conversational reasoning engine."
+          ] : null,
+          text: reply
+        };
+
+        const completedSession = {
+          ...newSessionStub,
+          modelUsed: effectiveModel,
+          messages: [userMsg, assistantMsg]
+        };
+
+        setActiveSession(completedSession);
+        setHistory(prev => prev.map(item => item.id === newId ? completedSession : item));
+        setIsGenerating(false);
+        setIsThinking(false);
+        return;
+      }
+
       setPipelineStepText(sessionMode === 'cyber' ? 'Ingesting video frames & calculating cryptographic hash…' : 'Extracting video keyframes & scene segmentation…');
 
       // Execute live backend pipeline call
@@ -890,7 +938,6 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
       let playlistData = null;
 
       try {
-        const isUrl = actualPrompt.startsWith('http://') || actualPrompt.startsWith('https://') || actualPrompt.startsWith('rtsp://');
         const res = await analyzeVideo({
           videoFile: pendingFile,
           prompt: isUrl ? '' : actualPrompt,
@@ -1106,33 +1153,46 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
       // ─── GENERAL MODE: YOUTUBE OR VIDEO SUMMARY ───
       let generatedSummary = null;
 
+      const realFps = Math.round(apiResult?.fps || 30);
+      const realDuration = apiResult?.duration !== undefined && apiResult?.duration !== null ? Number(apiResult.duration) : null;
+      const totalFrames = apiResult?.totalFrames || (realDuration ? Math.round(realDuration * realFps) : null);
+      const framesString = totalFrames 
+        ? `${totalFrames} frames @ ${realFps}fps (${realDuration}s)`
+        : (apiResult?.summary?.dynamics?.analyzedFrames || (realDuration ? `${realDuration}s Video Ingest` : 'Processed Video Frames'));
+
       if (isYouTube) {
         generatedSummary = {
-          title: apiResult?.summary?.title || 'YouTube Video Analysis & Breakdown',
+          title: apiResult?.summary?.title || (title ? `${title} — Intelligence Summary` : 'YouTube Video Analysis & Breakdown'),
           sourceType: 'YouTube',
           youtubeUrl: detectedYtUrl,
           modelUsed: effectiveModel,
           overview: apiResult?.summary?.overview || `Automated multimodal video ingestion from YouTube (${detectedYtUrl}). Extracted transcript, scene keyframes, and speaker delivery to produce structured chapters, core themes, and actionable executive takeaways.`,
-          takeaways: [],
-          chapters: [],
+          takeaways: apiResult?.summary?.takeaways || [],
+          chapters: apiResult?.summary?.chapters || (apiResult?.scenes || []).map((s, idx) => ({ title: s.label || `Scene ${idx + 1}`, time: `${s.start}s - ${s.end}s` })),
           dynamics: {
-            analyzedFrames: apiResult?.duration ? `${apiResult.duration * 30} frames @ 30fps (${apiResult.duration}s)` : '24,500 frames @ 30fps (YouTube Transcript Synchronized)',
+            analyzedFrames: framesString || 'YouTube Transcript Synchronized',
             engine: effectiveModel === 'deepthink' ? 'Chorus Deepthink (YouTube Adapter)' : 'Chorus Flash'
           },
-          actionItems: []
+          actionItems: apiResult?.summary?.actionItems || [],
+          detailed_analysis: apiResult?.detailed_analysis || [],
+          asr_transcript: apiResult?.asr_transcript || null,
+          scenes: apiResult?.scenes || []
         };
       } else {
         generatedSummary = {
           title: apiResult?.summary?.title || (title ? `${title} — Intelligence Summary` : 'Chorus Video Intelligence Summary'),
           modelUsed: effectiveModel,
-          overview: apiResult?.summary?.overview || 'Automated multimodal breakdown completed. Identified primary scene themes, visual action sequences, and high-priority operational takeaways.',
-          takeaways: [],
-          chapters: [],
+          overview: apiResult?.summary?.overview || (videoName ? `Automated multimodal breakdown completed for ${videoName}. Processed scene keyframes and Whisper audio track.` : 'Automated multimodal breakdown completed.'),
+          takeaways: apiResult?.summary?.takeaways || apiResult?.detailed_analysis?.slice(0, 4)?.map((d, idx) => ({ label: `Finding ${idx + 1}`, detail: typeof d === 'string' ? d : JSON.stringify(d) })) || [],
+          chapters: apiResult?.summary?.chapters || (apiResult?.scenes || []).map((s, idx) => ({ title: s.label || `Scene ${idx + 1}`, time: `${s.start}s - ${s.end}s` })),
           dynamics: {
-            analyzedFrames: apiResult?.duration ? `${apiResult.duration * 30} frames @ 30fps (${apiResult.duration}s)` : '660 frames @ 30fps (22s)',
+            analyzedFrames: framesString,
             engine: effectiveModel === 'deepthink' ? 'Chorus Deepthink' : 'Chorus Flash'
           },
-          actionItems: []
+          actionItems: apiResult?.summary?.actionItems || [],
+          detailed_analysis: apiResult?.detailed_analysis || [],
+          asr_transcript: apiResult?.asr_transcript || null,
+          scenes: apiResult?.scenes || []
         };
       }
 

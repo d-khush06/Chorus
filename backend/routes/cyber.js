@@ -11,6 +11,7 @@ const { getJobManager, RUNS_DIR } = require('../services/jobManager');
 const { computeVerdict } = require('../services/verdictService');
 const { runFFprobe } = require('../services/ffprobeService');
 const { getSSEHub } = require('../services/sseHub');
+const { getRelayService } = require('../services/relayService');
 
 const AUDIT_DIR = path.join(__dirname, '../audit_logs/custody');
 const REVIEW_QUEUE_FILE = path.join(__dirname, '../audit_logs/review_queue.jsonl');
@@ -56,9 +57,23 @@ router.post('/cameras/test', protect, async (req, res) => {
       return res.status(400).json({ success: false, error: 'RTSP URL is required' });
     }
 
+    const trimmedUrl = url.trim();
+
+    // Check for demo or test stream
+    if (trimmedUrl === 'demo' || trimmedUrl.startsWith('demo:') || trimmedUrl.includes('synthetic')) {
+      return res.json({
+        success: true,
+        reachable: true,
+        message: 'Demo video stream verified. Ready for simulated monitoring.',
+        camera_name,
+        masked_url: 'demo://sample-feed',
+        is_relay: true
+      });
+    }
+
     // SSRF Guard verification
-    const validation = await validateUrl(url, {
-      allowedSchemes: new Set(['rtsp', 'rtsps']),
+    const validation = await validateUrl(trimmedUrl, {
+      allowedSchemes: new Set(['rtsp', 'rtsps', 'http', 'https']),
       allowedTargets: getAllowedTargets()
     });
 
@@ -69,17 +84,18 @@ router.post('/cameras/test', protect, async (req, res) => {
       });
     }
 
-    const masked = maskRtspUrl(url);
+    const masked = maskRtspUrl(trimmedUrl);
 
-    // Test socket connection to host and port (default 554 for RTSP)
+    // Test socket connection to host and port (default 554 for RTSP, 80/443 for HTTP/S)
     let parsedUrl;
     try {
-      parsedUrl = new URL(url);
+      parsedUrl = new URL(trimmedUrl);
     } catch (e) {
-      return res.status(400).json({ success: false, error: 'Malformed RTSP URL' });
+      return res.status(400).json({ success: false, error: 'Malformed stream URL' });
     }
 
-    const port = parseInt(parsedUrl.port, 10) || 554;
+    const defaultPort = parsedUrl.protocol === 'https:' ? 443 : (parsedUrl.protocol === 'http:' ? 80 : 554);
+    const port = parseInt(parsedUrl.port, 10) || defaultPort;
     const hostToConnect = validation.validatedIp || parsedUrl.hostname;
 
     // Fast socket check with 3-second timeout
@@ -99,6 +115,7 @@ router.post('/cameras/test', protect, async (req, res) => {
       cleanup();
       res.json({
         success: true,
+        reachable: true,
         message: 'Camera stream connection established successfully.',
         camera_name,
         masked_url: masked,
@@ -111,14 +128,24 @@ router.post('/cameras/test', protect, async (req, res) => {
       if (responded) return;
       responded = true;
       cleanup();
-      // Even if port 554 socket test times out (e.g. firewall or UDP-only RTSP),
-      // if it passed SSRF validation, report validation passed with reachable warning
-      res.json({
-        success: true,
-        message: 'SSRF verification passed. Stream endpoint acknowledged.',
+      if (validation.isRelay) {
+        // Local relay might listen on different protocol or on demand
+        return res.json({
+          success: true,
+          reachable: true,
+          message: 'Local relay endpoint acknowledged.',
+          camera_name,
+          masked_url: masked,
+          is_relay: true
+        });
+      }
+      res.status(504).json({
+        success: false,
+        reachable: false,
+        error: `Connection timed out: Camera host at ${parsedUrl.hostname}:${port} did not respond within 3s. Ensure the device is powered on and accessible from this machine's network subnet.`,
         camera_name,
         masked_url: masked,
-        is_relay: validation.isRelay
+        is_relay: false
       });
     });
 
@@ -126,13 +153,23 @@ router.post('/cameras/test', protect, async (req, res) => {
       if (responded) return;
       responded = true;
       cleanup();
-      // Return reachable warning if network error
-      res.json({
-        success: true,
-        message: `Endpoint verified by SSRF guard (${err.code || 'socket error'}). Ready for relay ingest.`,
+      if (validation.isRelay) {
+        return res.json({
+          success: true,
+          reachable: true,
+          message: 'Local relay acknowledged.',
+          camera_name,
+          masked_url: masked,
+          is_relay: true
+        });
+      }
+      res.status(502).json({
+        success: false,
+        reachable: false,
+        error: `Connection failed (${err.code || 'socket error'}): Unable to establish TCP connection with ${parsedUrl.hostname}:${port}.`,
         camera_name,
         masked_url: masked,
-        is_relay: validation.isRelay
+        is_relay: false
       });
     });
 
@@ -140,6 +177,73 @@ router.post('/cameras/test', protect, async (req, res) => {
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
+});
+
+// GET /api/cyber/cameras/relay-status - Check if MediaMTX or built-in relay is available
+router.get('/cameras/relay-status', async (req, res) => {
+  try {
+    const relayService = getRelayService();
+    const mediaMtx = await relayService.checkMediaMTX();
+    res.json({
+      success: true,
+      mediaMtx,
+      builtinAvailable: true
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/cyber/live/:runId/stream/index.m3u8 - Serve HLS playlist for live run
+router.get('/live/:runId/stream/index.m3u8', (req, res) => {
+  const { runId } = req.params;
+  const relayService = getRelayService();
+  const hlsDir = relayService.getHlsDir(runId);
+  const playlist = path.join(hlsDir, 'index.m3u8');
+
+  if (!fs.existsSync(playlist)) {
+    return res.status(404).json({ error: 'Stream playlist not ready or not found' });
+  }
+
+  res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  fs.createReadStream(playlist).pipe(res);
+});
+
+// GET /api/cyber/live/:runId/stream/:segment - Serve HLS video segments (.ts)
+router.get('/live/:runId/stream/:segment', (req, res) => {
+  const { runId, segment } = req.params;
+  const safeSegment = path.basename(segment);
+  const relayService = getRelayService();
+  const segmentPath = path.join(relayService.getHlsDir(runId), safeSegment);
+
+  if (!fs.existsSync(segmentPath)) {
+    return res.status(404).json({ error: 'Stream segment not found' });
+  }
+
+  res.setHeader('Content-Type', 'video/mp2t');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  fs.createReadStream(segmentPath).pipe(res);
+});
+
+// GET /api/cyber/live/:runId/stream-info - Get live relay status
+router.get('/live/:runId/stream-info', (req, res) => {
+  const { runId } = req.params;
+  const relayService = getRelayService();
+  const relay = relayService.getRelay(runId);
+
+  res.json({
+    success: true,
+    runId,
+    relay: relay ? {
+      status: relay.status,
+      hlsUrl: relay.hlsUrl,
+      error: relay.error,
+      startTime: relay.startTime
+    } : null
+  });
 });
 
 // ============================================================

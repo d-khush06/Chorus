@@ -5,6 +5,7 @@ const { spawn } = require('child_process');
 const { EventEmitter } = require('events');
 const { getSSEHub } = require('./sseHub');
 const { maskRtspUrl } = require('./maskRtspUrl');
+const { formatRunResult } = require('./outputFormatter');
 
 const RUNS_DIR = path.join(__dirname, '../data/runs');
 const MAX_CONCURRENT_RUNS = 2;
@@ -28,6 +29,10 @@ class JobManager extends EventEmitter {
       for (const file of files) {
         const runPath = path.join(RUNS_DIR, file);
         const runData = JSON.parse(fs.readFileSync(runPath, 'utf-8'));
+        if (runData.status === 'running') {
+          runData.status = 'failed';
+          runData.error = 'Server restarted while run was in progress';
+        }
         this.runs.set(runData.id, runData);
       }
       console.log(`[JobManager] Loaded ${this.runs.size} persisted runs`);
@@ -213,21 +218,38 @@ class JobManager extends EventEmitter {
       run.completed_at = new Date().toISOString();
       run.pid = null;
       
+      const elapsedSeconds = run.started_at 
+        ? ((Date.now() - new Date(run.started_at).getTime()) / 1000).toFixed(1) 
+        : null;
+
       let pipelineResult = null;
       if (fs.existsSync(outputFile)) {
         try {
           pipelineResult = JSON.parse(fs.readFileSync(outputFile, 'utf-8'));
-          run.result = pipelineResult;
-        } catch (e) {}
+          run.pipelineResult = pipelineResult;
+          run.result = formatRunResult(run, pipelineResult, elapsedSeconds);
+        } catch (e) {
+          console.error('[JobManager] Error parsing output file:', e.message);
+        }
       }
 
-      if (code === 0) {
+      if (code === 0 && run.result) {
         run.status = 'completed';
         run.progress = 100;
         getSSEHub().emit(runId, {
           type: 'RUN_COMPLETED',
           status: 'completed',
-          result: pipelineResult,
+          result: run.result,
+          run: this.serializeRun(run)
+        });
+      } else if (run.result) {
+        // Soft completion if output was generated despite nonzero exit code
+        run.status = 'completed';
+        run.progress = 100;
+        getSSEHub().emit(runId, {
+          type: 'RUN_COMPLETED',
+          status: 'completed',
+          result: run.result,
           run: this.serializeRun(run)
         });
       } else {
@@ -348,6 +370,11 @@ class JobManager extends EventEmitter {
     const run = this.runs.get(runId);
     if (!run) return { success: false, error: 'Run not found' };
 
+    try {
+      const { getRelayService } = require('./relayService');
+      getRelayService().stopRelay(runId);
+    } catch (e) {}
+
     if (run.status === 'queued') {
       const idx = this.queue.indexOf(runId);
       if (idx !== -1) this.queue.splice(idx, 1);
@@ -386,6 +413,7 @@ class JobManager extends EventEmitter {
       source_type: run.source_type,
       entry_point: run.entry_point,
       case_id: run.case_id,
+      url: run.url ? maskRtspUrl(run.url) : null,
       status: run.status,
       created_at: run.created_at,
       started_at: run.started_at,

@@ -310,17 +310,13 @@ export default function App() {
         } />
         <Route path="/cyber" element={
           <PrivateRoute>
-            <AnalyticsPage onBack={() => navigate('/evidence')} />
-          </PrivateRoute>
-        } />
-        <Route element={
-          <PrivateRoute>
             <CyberLayout />
           </PrivateRoute>
         }>
-          <Route path="/cyber/live" element={<LiveWatchPage />} />
-          <Route path="/cyber/forensic" element={<ForensicPage />} />
-          <Route path="/cyber/trace" element={<TracePage />} />
+          <Route index element={<CyberLandingPage />} />
+          <Route path="live" element={<LiveWatchPage />} />
+          <Route path="forensic" element={<ForensicPage />} />
+          <Route path="trace" element={<TracePage />} />
         </Route>
         <Route path="/" element={<HomePage />} />
       </Routes>

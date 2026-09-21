@@ -162,8 +162,12 @@ async function validateUrl(inputUrl, options = {}) {
   // Validate every resolved IP against private / loopback / CGNAT ranges
   for (const ip of resolvedIps) {
     if (isPrivateIP(ip)) {
+      if (options.allowPrivate) {
+        continue;
+      }
       // Check if IP is in the admin allowlist
       const isAllowed = allowedTargets.some(target => {
+        if (target === '*') return true;
         if (target.includes('/')) {
           try {
             return ipInCIDR(ip, target);

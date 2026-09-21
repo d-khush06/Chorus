@@ -26,7 +26,8 @@ export function LiveWatchPage() {
   const [runId, setRunId] = useState(null);
   const [streamTicket, setStreamTicket] = useState(null);
   const [relayAvailable, setRelayAvailable] = useState(false);
-  const [relayError, setRelayError] = useState(false);
+  const [relayError, setRelayError] = useState(null);
+  const [hlsStreamUrl, setHlsStreamUrl] = useState(null);
 
   // Live Stream Telemetry & Clock (Clock runs only while live; stats display '—' until real stream reports them)
   const [clockTime, setClockTime] = useState('');
@@ -87,6 +88,63 @@ export function LiveWatchPage() {
     return () => clearInterval(interval);
   }, [lastChunkTime]);
 
+  // Hls.js video playback initialization
+  useEffect(() => {
+    if (!relayAvailable || !hlsStreamUrl || !videoRef.current) return;
+
+    if (Hls.isSupported()) {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+      }
+      const hls = new Hls({
+        enableWorker: true,
+        lowLatencyMode: true,
+        backBufferLength: 30,
+        liveSyncDurationCount: 3
+      });
+      hls.loadSource(hlsStreamUrl);
+      hls.attachMedia(videoRef.current);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        videoRef.current?.play().catch(e => console.warn('Autoplay prevented:', e));
+      });
+      hls.on(Hls.Events.ERROR, (event, data) => {
+        if (data.fatal) {
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              hls.startLoad();
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              hls.recoverMediaError();
+              break;
+            default:
+              hls.destroy();
+              setRelayError('Playback error while loading stream segments.');
+              break;
+          }
+        }
+      });
+      hlsRef.current = hls;
+      return () => {
+        hls.destroy();
+        hlsRef.current = null;
+      };
+    } else if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
+      videoRef.current.src = hlsStreamUrl;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [relayAvailable, hlsStreamUrl]);
+
+  // Load a demo feed for testing when hardware camera is unreachable
+  const handleUseDemoFeed = () => {
+    setCameraName('Perimeter Cam (Demo)');
+    setRtspUrl('demo://sample-feed');
+    setIsMasked(false);
+    setConnectionTestResult({
+      ok: true,
+      message: 'Demo stream loaded. Ready to test live video monitoring.'
+    });
+  };
+
   // Test Camera Connection through SSRF Guard
   const handleTestConnection = async () => {
     if (!rtspUrl.trim()) {
@@ -128,7 +186,9 @@ export function LiveWatchPage() {
 
     const token = localStorage.getItem('token');
     setIsMonitoring(true);
-    setRelayError(false);
+    setRelayError(null);
+    setRelayAvailable(false);
+    setHlsStreamUrl(null);
     setChunks([]);
     setAlerts([]);
     setObservations([]);
@@ -160,6 +220,7 @@ export function LiveWatchPage() {
       setRunId(activeRunId);
 
       // Acquire stream ticket
+      let activeTicket = null;
       try {
         const tRes = await fetch(`${API_BASE}/api/auth/stream-ticket`, {
           method: 'POST',
@@ -171,13 +232,43 @@ export function LiveWatchPage() {
         });
         if (tRes.ok) {
           const tData = await tRes.json();
-          setStreamTicket(tData.ticket);
+          activeTicket = tData.ticket;
+          setStreamTicket(activeTicket);
         }
       } catch (err) {}
 
-      // Connect SSE for live chunks and alerts
-      subscribeToLiveEvents(activeRunId);
+      // Connect SSE for live chunks and alerts with authenticated ticket
+      subscribeToLiveEvents(activeRunId, activeTicket);
       loadRules(activeRunId);
+
+      // Check stream status periodically until ready
+      let pollAttempts = 0;
+      const statusPoller = setInterval(async () => {
+        pollAttempts++;
+        if (pollAttempts > 25) {
+          clearInterval(statusPoller);
+          return;
+        }
+        try {
+          const sRes = await fetch(`${API_BASE}/api/cyber/live/${activeRunId}/stream-info`);
+          if (sRes.ok) {
+            const sData = await sRes.json();
+            if (sData.relay?.status === 'ready' && sData.relay?.hlsUrl) {
+              clearInterval(statusPoller);
+              const isExternal = sData.relay.hlsUrl.startsWith('http://') || sData.relay.hlsUrl.startsWith('https://');
+              const streamUrl = isExternal ? sData.relay.hlsUrl : `${API_BASE}${sData.relay.hlsUrl}`;
+              setHlsStreamUrl(activeTicket && !isExternal ? `${streamUrl}?ticket=${encodeURIComponent(activeTicket)}` : streamUrl);
+              setRelayAvailable(true);
+              setRelayError(null);
+            } else if (sData.relay?.status === 'error') {
+              clearInterval(statusPoller);
+              setRelayError(sData.relay.error || 'Camera stream could not be reached.');
+              setRelayAvailable(false);
+            }
+          }
+        } catch (e) {}
+      }, 1000);
+
     } catch (err) {
       setIsMonitoring(false);
       setConnectionTestResult({ ok: false, message: err.message });
@@ -185,14 +276,32 @@ export function LiveWatchPage() {
   };
 
   // SSE Stream Subscription
-  const subscribeToLiveEvents = (rId) => {
-    const sseUrl = `${API_BASE}/api/analyze/runs/${rId}/events`;
+  const subscribeToLiveEvents = (rId, ticket) => {
+    const sseUrl = `${API_BASE}/api/analyze/runs/${rId}/events${ticket ? `?ticket=${encodeURIComponent(ticket)}` : ''}`;
     const es = new EventSource(sseUrl);
     eventSourceRef.current = es;
 
     es.onmessage = (evt) => {
       try {
         const payload = JSON.parse(evt.data);
+
+        // RELAY_READY: Stream transcoded and available for HLS playback
+        if (payload.type === 'RELAY_READY' || payload.hlsUrl) {
+          const rawUrl = payload.hlsUrl;
+          if (rawUrl) {
+            const isExternal = rawUrl.startsWith('http://') || rawUrl.startsWith('https://');
+            const streamUrl = isExternal ? rawUrl : `${API_BASE}${rawUrl}`;
+            setHlsStreamUrl(ticket && !isExternal ? `${streamUrl}?ticket=${encodeURIComponent(ticket)}` : streamUrl);
+            setRelayAvailable(true);
+            setRelayError(null);
+          }
+        }
+
+        // RELAY_ERROR: Stream error
+        if (payload.type === 'RELAY_ERROR') {
+          setRelayError(payload.error || 'Failed to connect to camera feed.');
+          setRelayAvailable(false);
+        }
 
         // Update model label if provided in metadata
         if (payload.model_name || payload.run?.model_name) {
@@ -262,7 +371,7 @@ export function LiveWatchPage() {
   };
 
   // Stop Live Monitoring
-  const handleStopMonitoring = () => {
+  const handleStopMonitoring = async () => {
     if (eventSourceRef.current) {
       eventSourceRef.current.close();
       eventSourceRef.current = null;
@@ -271,7 +380,17 @@ export function LiveWatchPage() {
       hlsRef.current.destroy();
       hlsRef.current = null;
     }
+    if (runId) {
+      try {
+        const token = localStorage.getItem('token');
+        await fetch(`${API_BASE}/api/analyze/runs/${runId}/cancel`, {
+          method: 'POST',
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+      } catch (e) {}
+    }
     setIsMonitoring(false);
+    setRelayAvailable(false);
     setShowSaveCaseModal(true);
   };
 
@@ -442,6 +561,16 @@ export function LiveWatchPage() {
 
         <div className="flex items-center gap-2 pt-2 md:pt-0 md:mb-[1px]">
           <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleUseDemoFeed}
+            disabled={isMonitoring}
+            title="Load a sample demo camera feed"
+          >
+            Demo Feed
+          </Button>
+
+          <Button
             variant="outline"
             size="sm"
             onClick={handleTestConnection}
@@ -503,7 +632,52 @@ export function LiveWatchPage() {
                   className="w-full h-full object-cover"
                   playsInline
                   muted
+                  autoPlay
                 />
+              ) : relayError ? (
+                <div className="p-6 text-center max-w-md mx-auto">
+                  <div
+                    className="w-12 h-12 mx-auto mb-3.5 text-danger flex items-center justify-center rounded-control border border-danger/30"
+                    style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)' }}
+                  >
+                    <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="8" x2="12" y2="12" />
+                      <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                  </div>
+                  <h4 className="font-heading text-base font-semibold text-danger mb-1">
+                    Camera Stream Unreachable
+                  </h4>
+                  <p className="text-secondary text-xs leading-relaxed mb-4 max-w-sm mx-auto">
+                    {relayError}
+                  </p>
+                  <div
+                    className="p-3.5 border border-border rounded-control text-left text-xs font-mono space-y-1.5 text-secondary"
+                    style={{ backgroundColor: 'var(--surface)' }}
+                  >
+                    <div>1. Verify camera IP ({rtspUrl.split('@')[1] || rtspUrl}) is on your reachable subnet</div>
+                    <div>2. Ensure camera is powered on with RTSP port 554 open</div>
+                    <div>3. Click <button type="button" onClick={handleUseDemoFeed} className="text-accent underline font-semibold">Demo Feed</button> to test monitoring with simulated stream</div>
+                  </div>
+                </div>
+              ) : isMonitoring ? (
+                <div className="p-6 text-center max-w-md mx-auto">
+                  <div
+                    className="w-12 h-12 mx-auto mb-3.5 text-accent flex items-center justify-center rounded-control border border-border"
+                    style={{ backgroundColor: 'var(--surface)' }}
+                  >
+                    <svg className="w-6 h-6 animate-spin text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 12a9 9 0 11-6.219-8.56" />
+                    </svg>
+                  </div>
+                  <h4 className="font-heading text-base font-semibold text-primary mb-1">
+                    Connecting to Relay Stream…
+                  </h4>
+                  <p className="text-secondary text-xs leading-relaxed mb-2 max-w-sm mx-auto">
+                    Transcoding RTSP video stream into browser HLS playback.
+                  </p>
+                </div>
               ) : (
                 /* Relay Not Configured State - Strict Rule: NEVER SHOW A FAKE STREAM */
                 <div className="p-6 text-center max-w-md mx-auto">
