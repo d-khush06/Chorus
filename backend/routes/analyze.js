@@ -173,15 +173,10 @@ router.delete('/runs/:id', protect, async (req, res) => {
   res.json({ success: result.success, message: result.message, error: result.error });
 });
 
-// POST /api/analyze - Legacy sync endpoint (kept for backward compatibility with General mode)
-router.post('/sync', protect, upload.single('video'), async (req, res) => {
-  // This is the original synchronous endpoint - kept for General mode compatibility
-  // ... (existing sync logic from the previous version)
-  // For brevity, redirecting to async pattern
-  return res.status(410).json({ 
-    success: false, 
-    error: 'Synchronous endpoint deprecated. Use POST /api/analyze for async job creation.' 
-  });
+// POST /api/analyze/sync — permanently moved; redirect to async endpoint
+// Bug 9 fix: was returning 410 Gone with no actionable redirect; now 308 Permanent Redirect.
+router.post('/sync', (req, res) => {
+  res.redirect(308, '/api/analyze');
 });
 
 // POST /api/analyze/chat - Interactive Q&A

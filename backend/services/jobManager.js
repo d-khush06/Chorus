@@ -77,6 +77,7 @@ class JobManager extends EventEmitter {
       videoPath: options.videoPath || null,
       url: options.url || null,
       prompt: options.prompt || '',
+      rawHash: options.rawHash || '',   // Bug 10 fix: was never stored
       status: 'queued',
       created_at: new Date().toISOString(),
       started_at: null,
@@ -297,6 +298,12 @@ class JobManager extends EventEmitter {
           const event = JSON.parse(line.substring('STAGE_EVENT:'.length));
           this.handleStageEvent(runId, event);
         } catch (e) {}
+      } else if (line.startsWith('TOOL_CALL:')) {
+        // Hermes-style tool-call events — forward to SSE stream
+        try {
+          const event = JSON.parse(line.substring('TOOL_CALL:'.length));
+          getSSEHub().emit(runId, { type: 'TOOL_CALL', data: event });
+        } catch (e) {}
       } else if (line.startsWith('CHUNK_EVENT:')) {
         try {
           const event = JSON.parse(line.substring('CHUNK_EVENT:'.length));
@@ -387,16 +394,34 @@ class JobManager extends EventEmitter {
 
     if (run.status === 'running' && run.pid) {
       try {
-        const { spawn } = require('child_process');
-        const kill = spawn('taskkill', ['/PID', String(run.pid), '/T', '/F'], { windowsHide: true });
-        kill.on('close', () => {
+        // Bug 3 fix: cross-platform process kill
+        // Windows uses taskkill to recursively kill the Python process tree.
+        // Linux/macOS use the native process.kill() with SIGKILL.
+        if (process.platform === 'win32') {
+          const { spawn } = require('child_process');
+          const kill = spawn('taskkill', ['/PID', String(run.pid), '/T', '/F'], { windowsHide: true });
+          kill.on('close', () => {
+            run.status = 'cancelled';
+            run.completed_at = new Date().toISOString();
+            run.pid = null;
+            this.running.delete(runId);
+            this.persistRun(run);
+            this.emit('run:cancelled', run);
+          });
+        } else {
+          // Linux / macOS — kill the process group to terminate child processes too
+          try {
+            process.kill(-run.pid, 'SIGKILL');  // negative PID = entire process group
+          } catch (_) {
+            process.kill(run.pid, 'SIGKILL');   // fallback: kill just the PID
+          }
           run.status = 'cancelled';
           run.completed_at = new Date().toISOString();
           run.pid = null;
           this.running.delete(runId);
           this.persistRun(run);
           this.emit('run:cancelled', run);
-        });
+        }
         return { success: true, message: 'Kill signal sent' };
       } catch (err) {
         return { success: false, error: err.message };

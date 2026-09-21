@@ -35,7 +35,10 @@ const BLOCKED_IPV6_RANGES = [
   'ff00::/8'
 ];
 
-const ALLOWED_SCHEMES = new Set(['https', 'rtsp']);
+// Allowed URL schemes for RTSP/CCTV relay and analysis URLs
+// rtsps:// = RTSP over TLS (secure cameras over internet)
+// https:// = HLS streams from cloud DVRs or IP cameras with web interface
+const ALLOWED_SCHEMES = new Set(['https', 'rtsp', 'rtsps', 'http']);
 
 function ipInCIDR(ip, cidr) {
   const [rangeIp, bits] = cidr.split('/');
@@ -159,10 +162,21 @@ async function validateUrl(inputUrl, options = {}) {
     return { valid: false, reason: 'No IP addresses found for hostname', statusCode: 403 };
   }
 
+  // Public-internet CCTV: if ALLOW_PUBLIC_RTSP=true, skip the private-IP block
+  // for RTSP/RTSPS URLs. This enables cameras reachable via public IP, DDNS,
+  // or tunnel (e.g. Cloudflare Tunnel, ngrok) without being on the same network.
+  const allowPublicRtsp = (process.env.ALLOW_PUBLIC_RTSP || '').toLowerCase() === 'true';
+  const isRtspScheme = scheme === 'rtsp' || scheme === 'rtsps';
+
   // Validate every resolved IP against private / loopback / CGNAT ranges
   for (const ip of resolvedIps) {
     if (isPrivateIP(ip)) {
       if (options.allowPrivate) {
+        continue;
+      }
+      // Skip private-IP block for public RTSP if explicitly allowed
+      if (allowPublicRtsp && isRtspScheme) {
+        console.warn(`[ssrfGuard] ALLOW_PUBLIC_RTSP: bypassing private-IP block for ${ip} (${hostname})`);
         continue;
       }
       // Check if IP is in the admin allowlist

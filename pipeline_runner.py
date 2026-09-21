@@ -144,6 +144,28 @@ def _emit_alert_event(alert_data):
     if _EMIT_EVENTS:
         print(f"ALERT_EVENT:{json.dumps(alert_data)}", flush=True)
 
+def _emit_tool_call_start(tool_name: str, input_summary: dict = None):
+    if _EMIT_EVENTS:
+        payload = {"tool": tool_name, "status": "started"}
+        if input_summary:
+            payload["input"] = input_summary
+        print(f"TOOL_CALL:{json.dumps(payload)}", flush=True)
+
+def _emit_tool_call_complete(tool_name: str, result_summary: dict = None):
+    if _EMIT_EVENTS:
+        payload = {"tool": tool_name, "status": "completed"}
+        if result_summary:
+            payload["result"] = result_summary
+        print(f"TOOL_CALL:{json.dumps(payload)}", flush=True)
+
+def _emit_tool_call_skip(tool_name: str, reason: str):
+    if _EMIT_EVENTS:
+        print(f"TOOL_CALL:{json.dumps({'tool': tool_name, 'status': 'skipped', 'reason': reason})}", flush=True)
+
+def _emit_tool_call_error(tool_name: str, error: str):
+    if _EMIT_EVENTS:
+        print(f"TOOL_CALL:{json.dumps({'tool': tool_name, 'status': 'error', 'error': error})}", flush=True)
+
 def _ensure_ffmpeg():
     import shutil
     if shutil.which("ffmpeg"):
@@ -877,14 +899,15 @@ def run_full_pipeline(
             "ai_generation_detection",
             "orchestrator_routing",
             "scene_segmentation",
+            "video_engine",        # Bug 6 fix: was missing from manifest
             "asr_transcription",
             "vision_perception",
-            "multimodal_fusion",
-            "domain_output",
-            "acoustic_event_detection",
+            "acoustic_event_detection",  # Bug 2 fix: cyber steps BEFORE fusion
             "geo_estimation",
             "face_reid",
-            "alert_system"
+            "alert_system",
+            "multimodal_fusion",
+            "domain_output",
         ]
     else:
         stage_names = [
@@ -895,10 +918,11 @@ def run_full_pipeline(
             "ai_generation_detection",
             "orchestrator_routing",
             "scene_segmentation",
+            "video_engine",        # Bug 6 fix: was missing from manifest
             "asr_transcription",
             "vision_perception",
             "multimodal_fusion",
-            "domain_output"
+            "domain_output",
         ]
     
     stages = [{"name": name, "status": "pending", "applicable": True} for name in stage_names]
@@ -1302,55 +1326,8 @@ def run_full_pipeline(
     except ImportError:
         pass
 
-    # ── Step 8: Multimodal Fusion ──────────────────────────────────────────
-    _emit_stage_start("multimodal_fusion")
-    print("\n  [Pipeline] ▶ Step 8 — Multimodal Fusion", flush=True)
-    fusion_result = None
-    try:
-        from fusion_agent import run_fusion
-        fusion_result = run_fusion(
-            scenes=scenes,
-            asr_result=result.get("asr_result"),
-            vl_output=result.get("vl_output"),
-            key_features=result.get("key_features"),
-            manipulation_result=result.get("manipulation_result"),
-            ai_generation_result=result.get("ai_generation_result"),
-            mode=mode,
-            source_type=source_type,
-        )
-        result["fusion_result"] = fusion_result
-        print("  [Pipeline] ✅ Step 8 — Fusion complete.", flush=True)
-        _emit_stage_complete("multimodal_fusion", {"fused": True})
-    except Exception as exc:
-        print(f"  [Pipeline] ⚠️  Step 8 error: {exc}", flush=True)
-        _emit_stage_complete("multimodal_fusion", {"error": str(exc)})
-
-    # ── Step 9: Domain Output ──────────────────────────────────────────────
-    _emit_stage_start("domain_output")
-    print("\n  [Pipeline] ▶ Step 9 — Domain Output", flush=True)
-    domain_output = None
-    try:
-        from domain_output import run_domain_output
-        domain_output = run_domain_output(
-            fusion_result=fusion_result,
-            mode=mode,
-            user_question=user_question,
-            source_type=source_type,
-            video_path=local_video_path,
-            video_title=video_title or os.path.basename(local_video_path) if local_video_path else None,
-            manipulation_verdict=manipulation_verdict,
-            acoustic_result=result.get("acoustic_result"),
-            geo_result=result.get("geo_result"),
-            face_reid_result=result.get("face_reid_result"),
-            alert_result=result.get("alert_result"),
-        )
-        result["domain_output"] = domain_output
-        print("  [Pipeline] ✅ Step 9 — Domain output complete.", flush=True)
-        _emit_stage_complete("domain_output", {"output": "complete"})
-    except Exception as exc:
-        print(f"  [Pipeline] ⚠️  Step 9 error: {exc}", flush=True)
-        _emit_stage_complete("domain_output", {"error": str(exc)})
-
+    # ── Cyber Steps C1-C4 and final Fusion/Domain run BELOW ──────────────────
+    # (Bug fix: local vars initialized here so cyber steps populate them before fusion)
     acoustic_result = None
     geo_result = None
     face_reid_result = None
@@ -1361,6 +1338,7 @@ def run_full_pipeline(
         _emit_stage_start("acoustic_event_detection")
         if "acoustic_event_detection" in tool_calls and local_video_path and os.path.exists(local_video_path):
             print("\n  [Pipeline] ▶ Step C1 — Acoustic Event Detection (YAMNet)", flush=True)
+            _emit_tool_call_start("acoustic_event_detection")
             try:
                 from acoustic_event_detection import detect_acoustic_events
                 acoustic_result = detect_acoustic_events(local_video_path)
@@ -1369,20 +1347,25 @@ def run_full_pipeline(
                 backend = acoustic_result.get("backend", "unknown")
                 print(f"  [Pipeline] ✅ Step C1 — {n_events} event(s) via {backend}.", flush=True)
                 _emit_stage_complete("acoustic_event_detection", {"events": n_events, "backend": backend})
+                _emit_tool_call_complete("acoustic_event_detection", {"events": n_events})
             except ImportError:
                 print("  [Pipeline] ⚠️  Step C1 skipped — acoustic_event_detection not available.", flush=True)
                 _emit_stage_skip("acoustic_event_detection", "module unavailable")
+                _emit_tool_call_skip("acoustic_event_detection", "module unavailable")
             except Exception as exc:
                 print(f"  [Pipeline] ⚠️  Step C1 error: {exc}", flush=True)
                 _emit_stage_complete("acoustic_event_detection", {"error": str(exc)})
+                _emit_tool_call_error("acoustic_event_detection", str(exc))
         else:
             print("  [Pipeline] ⚠️  Step C1 (Acoustic) skipped.", flush=True)
             _emit_stage_skip("acoustic_event_detection", "not in tool calls or no video")
+            _emit_tool_call_skip("acoustic_event_detection", "not in tool calls or no video")
 
         # ── Step C2: Geo Estimation ───────────────────────────────────────
         _emit_stage_start("geo_estimation")
         if "geo_estimation_agent" in tool_calls and local_video_path and os.path.exists(local_video_path):
             print("\n  [Pipeline] ▶ Step C2 — Geo Estimation (GeoCLIP)", flush=True)
+            _emit_tool_call_start("geo_estimation_agent")
             try:
                 from geo_estimation_agent import estimate_geo
                 geo_result = estimate_geo(video_path=local_video_path)
@@ -1391,18 +1374,23 @@ def run_full_pipeline(
                 if gps:
                     print(f"  [Pipeline] ✅ Step C2 — ({gps['lat']}, {gps['lon']}) conf={gps['confidence']}", flush=True)
                     _emit_stage_complete("geo_estimation", {"lat": gps['lat'], "lon": gps['lon'], "confidence": gps['confidence']})
+                    _emit_tool_call_complete("geo_estimation_agent", {"lat": gps['lat'], "lon": gps['lon']})
                 else:
                     print(f"  [Pipeline] ⚠️  Step C2 — no GPS estimate: {geo_result.get('error', 'unknown')}", flush=True)
                     _emit_stage_complete("geo_estimation", {"error": geo_result.get('error', 'unknown')})
+                    _emit_tool_call_skip("geo_estimation_agent", "no GPS estimate")
             except ImportError:
                 print("  [Pipeline] ⚠️  Step C2 skipped — geo_estimation_agent not available.", flush=True)
                 _emit_stage_skip("geo_estimation", "module unavailable")
+                _emit_tool_call_skip("geo_estimation_agent", "module unavailable")
             except Exception as exc:
                 print(f"  [Pipeline] ⚠️  Step C2 error: {exc}", flush=True)
                 _emit_stage_complete("geo_estimation", {"error": str(exc)})
+                _emit_tool_call_error("geo_estimation_agent", str(exc))
         else:
             print("  [Pipeline] ⚠️  Step C2 (Geo) skipped.", flush=True)
             _emit_stage_skip("geo_estimation", "not in tool calls or no video")
+            _emit_tool_call_skip("geo_estimation_agent", "not in tool calls or no video")
 
         # ── Step C3: Face Re-ID (governance gated) ────────────────────────
         _emit_stage_start("face_reid")
@@ -1511,6 +1499,8 @@ def run_full_pipeline(
     print(f"  [Pipeline] ✅ Step 4b — Verification tools run: {_active_tools or ['none (no triggers fired)']}", flush=True)
 
     # ── Step 8: Fusion ────────────────────────────────────────────────────
+    _emit_stage_start("multimodal_fusion")
+    _emit_tool_call_start("fusion_agent")
     print("\n  [Pipeline] ▶ Step 8 — Fusion Agent", flush=True)
     fused = None
     try:
@@ -1543,12 +1533,18 @@ def run_full_pipeline(
         )
         result["fusion_result"] = fused
         print("  [Pipeline] ✅ Step 8 — Fusion complete.", flush=True)
+        _emit_stage_complete("multimodal_fusion", {"fused": True})
+        _emit_tool_call_complete("fusion_agent", {"fused": True})
     except Exception as exc:
         print(f"  [Pipeline] ⚠️  Step 8 error: {exc}", flush=True)
+        _emit_stage_complete("multimodal_fusion", {"error": str(exc)})
+        _emit_tool_call_error("fusion_agent", str(exc))
         import traceback; traceback.print_exc()
 
     # ── Step 9: Domain Output ──────────────────────────────────────────────
     if not skip_domain_output and fused and "domain_output" in tool_calls:
+        _emit_stage_start("domain_output")
+        _emit_tool_call_start("domain_output")
         print("\n  [Pipeline] ▶ Step 9 — Domain Output (Final Summary)", flush=True)
         try:
             from domain_output import generate_output
@@ -1559,11 +1555,16 @@ def run_full_pipeline(
             )
             result["domain_output"] = domain_result
             print("  [Pipeline] ✅ Step 9 — Domain output complete.", flush=True)
+            _emit_stage_complete("domain_output", {"output": "complete"})
+            _emit_tool_call_complete("domain_output", {"output": "complete"})
         except Exception as exc:
             print(f"  [Pipeline] ⚠️  Step 9 error: {exc}", flush=True)
+            _emit_stage_complete("domain_output", {"error": str(exc)})
+            _emit_tool_call_error("domain_output", str(exc))
             import traceback; traceback.print_exc()
     else:
         print("  [Pipeline] ⚠️  Step 9 (Domain Output) skipped.", flush=True)
+        _emit_stage_skip("domain_output", "skipped or no fusion result")
 
     # ── Finalize & Disk Space Cleanup ───────────────────────────────────────
     # Clean up temporary downloaded video if it was an ingested playlist item to preserve disk space

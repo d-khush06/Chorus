@@ -177,16 +177,20 @@ class RelayService {
         playlistPath
       ];
     } else {
-      // Local video or demo file: loop continuously
-      const sampleVideo = isLocalFile && fs.existsSync(streamUrl)
-        ? streamUrl
-        : path.resolve(__dirname, '../../tests/synthetic/videos/basic_10s.mp4');
+      // Local video file — must exist; no demo fallback
+      if (!fs.existsSync(streamUrl)) {
+        throw new Error(
+          `Video file not found: ${streamUrl}. ` +
+          `For live CCTV streams, provide a valid rtsp:// or rtsps:// URL.`
+        );
+      }
 
+      // Loop the local file continuously for dashboard preview
       args = [
         '-y',
         '-re',
         '-stream_loop', '-1',
-        '-i', sampleVideo,
+        '-i', streamUrl,
         '-c:v', 'libx264',
         '-preset', 'ultrafast',
         '-tune', 'zerolatency',
