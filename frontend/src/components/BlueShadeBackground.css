@@ -6,22 +6,10 @@
   height: 100vh;
   z-index: 0;
   pointer-events: none;
-  background-color: #000000; /* Fully dark / Pure black */
+  background-color: var(--bg, #09090b);
   overflow: hidden;
 }
 
 .blue-shade-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(150px);
-  opacity: 0.8;
-}
-
-.orb-top-glow {
-  top: -40%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 80vw;
-  height: 80vh;
-  background: rgba(0, 120, 255, 0.15); /* Slight blue glow */
+  display: none;
 }

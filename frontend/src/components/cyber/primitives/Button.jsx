@@ -13,11 +13,11 @@ export const Button = forwardRef(function Button({
   ...props
 }, ref) {
   const variants = {
-    primary: 'bg-accent text-[var(--btn-label)] border-accent hover:opacity-90 focus:ring-accent font-semibold',
-    secondary: 'bg-surface text-primary border border-default hover:border-accent/50 focus:ring-accent',
-    outline: 'bg-transparent text-primary border border-default hover:bg-surface focus:ring-accent',
-    ghost: 'bg-transparent text-primary border-transparent hover:bg-surface focus:ring-accent',
-    danger: 'bg-danger text-[var(--bg)] border-danger hover:opacity-90 focus:ring-danger font-semibold',
+    primary: 'bg-accent text-[var(--btn-label)] border border-accent hover:opacity-90 focus:ring-accent font-semibold',
+    secondary: 'bg-surface text-primary border border-border hover:border-accent/50 focus:ring-accent',
+    outline: 'bg-transparent text-primary border border-border hover:bg-surface hover:border-border-strong focus:ring-accent',
+    ghost: 'bg-transparent text-primary border border-transparent hover:bg-surface focus:ring-accent',
+    danger: 'bg-danger text-[var(--bg)] border border-danger hover:opacity-90 focus:ring-danger font-semibold',
   };
 
   const sizes = {
@@ -27,7 +27,7 @@ export const Button = forwardRef(function Button({
     icon: 'p-2',
   };
 
-  const baseStyles = 'inline-flex items-center justify-center font-semibold rounded-control transition-all duration-fast disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface';
+  const baseStyles = 'inline-flex items-center justify-center font-semibold rounded-control transition-all duration-fast disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-surface border-solid';
 
   return (
     <button

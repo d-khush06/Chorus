@@ -56,6 +56,7 @@ export const StatusPill = forwardRef(function StatusPill({
   showIcon = true,
   size = 'md',
   pulse = false,
+  dot = false,
   ...props
 }, ref) {
   const variants = {

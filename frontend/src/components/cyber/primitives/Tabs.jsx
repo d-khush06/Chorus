@@ -1,29 +1,88 @@
-import { forwardRef, useState, useRef, useEffect } from 'react';
+import React, { forwardRef, useState, useRef } from 'react';
 
-export const Tabs = forwardRef(function Tabs({ className = '', children, defaultValue, onChange, variant = 'default', ...props }, ref) {
-  const [activeValue, setActiveValue] = useState(defaultValue);
-  const tabsListRef = useRef(null);
+export const Tabs = forwardRef(function Tabs({
+  className = '',
+  children,
+  defaultValue,
+  value,
+  onChange,
+  variant = 'default',
+  ...props
+}, ref) {
+  const [uncontrolledValue, setUncontrolledValue] = useState(defaultValue);
+  const activeValue = value !== undefined ? value : uncontrolledValue;
 
-  const handleTabClick = (value) => {
-    setActiveValue(value);
-    onChange?.(value);
+  const handleTabClick = (val) => {
+    if (value === undefined) {
+      setUncontrolledValue(val);
+    }
+    onChange?.(val);
   };
+
+  const listVariants = {
+    default: 'border-b border-border',
+    underline: 'border-b border-border',
+    pills: 'p-1 bg-surface-alt/60 rounded-control border border-border inline-flex gap-1',
+  };
+
+  const triggers = [];
+  const contents = [];
+
+  React.Children.forEach(children, (child) => {
+    if (!React.isValidElement(child)) return;
+    if (child.type === TabContent || child.props?.role === 'tabpanel') {
+      contents.push(child);
+    } else {
+      triggers.push(child);
+    }
+  });
 
   return (
     <div ref={ref} className={className} {...props}>
-      <TabsList ref={tabsListRef} variant={variant} activeValue={activeValue} onTabClick={handleTabClick} />
-      <TabsContent>{children}</TabsContent>
+      <div
+        role="tablist"
+        aria-orientation="horizontal"
+        className={`flex items-center gap-1 ${listVariants[variant] || ''}`}
+        style={variant === 'underline' || variant === 'default' ? {
+          borderTop: 'none',
+          borderLeft: 'none',
+          borderRight: 'none',
+          borderBottom: '1px solid var(--border)',
+        } : undefined}
+      >
+        {triggers.map((child, idx) =>
+          React.cloneElement(child, {
+            key: child.key || child.props.value || idx,
+            variant: child.props.variant || variant,
+            isActive: child.props.isActive !== undefined ? child.props.isActive : child.props.value === activeValue,
+            onClick: (e) => {
+              child.props.onClick?.(e);
+              handleTabClick(child.props.value);
+            },
+          })
+        )}
+      </div>
+      {contents.length > 0 && (
+        <div className="mt-4">
+          {contents.map((child, idx) =>
+            React.cloneElement(child, {
+              key: child.key || child.props.value || idx,
+              activeValue: child.props.activeValue || activeValue,
+            })
+          )}
+        </div>
+      )}
     </div>
   );
 });
 
 Tabs.displayName = 'Tabs';
 
-const TabsList = forwardRef(function TabsList({ variant, activeValue, onTabClick, children }, ref) {
+export const TabsList = forwardRef(function TabsList({ variant = 'default', activeValue, onTabClick, children, className = '' }, ref) {
   const variants = {
-    default: 'border-b border-default',
-    underline: 'border-b border-default',
-    pills: '',
+    default: 'border-b border-border',
+    underline: 'border-b border-border',
+    pills: 'p-1 bg-surface-alt/60 rounded-control border border-border inline-flex gap-1',
   };
 
   return (
@@ -31,14 +90,21 @@ const TabsList = forwardRef(function TabsList({ variant, activeValue, onTabClick
       ref={ref}
       role="tablist"
       aria-orientation="horizontal"
-      className={`flex gap-1 ${variants[variant]}`}
+      className={`flex items-center gap-1 ${variants[variant] || ''} ${className}`}
+      style={variant === 'underline' || variant === 'default' ? {
+        borderTop: 'none',
+        borderLeft: 'none',
+        borderRight: 'none',
+        borderBottom: '1px solid var(--border)',
+      } : undefined}
     >
-      {React.Children.map(children, (child) => {
+      {React.Children.map(children, (child, idx) => {
         if (!React.isValidElement(child)) return child;
         return React.cloneElement(child, {
+          key: child.key || child.props?.value || idx,
           variant,
           isActive: child.props.value === activeValue,
-          onClick: () => onTabClick(child.props.value),
+          onClick: () => onTabClick?.(child.props.value),
         });
       })}
     </div>
@@ -46,17 +112,6 @@ const TabsList = forwardRef(function TabsList({ variant, activeValue, onTabClick
 });
 
 TabsList.displayName = 'TabsList';
-
-function TabsContent({ children }) {
-  return (
-    <div className="mt-4">
-      {React.Children.map(children, (child) => {
-        if (!React.isValidElement(child)) return child;
-        return child;
-      })}
-    </div>
-  );
-}
 
 export const TabTrigger = forwardRef(function TabTrigger({
   className = '',
@@ -66,15 +121,37 @@ export const TabTrigger = forwardRef(function TabTrigger({
   isActive = false,
   onClick,
   variant = 'default',
+  style,
   ...props
 }, ref) {
+  const isUnderline = variant === 'underline' || variant === 'default';
+
   const variants = {
-    default: 'bg-transparent text-secondary hover:text-primary data-[state=active]:text-primary data-[state=active]:font-semibold',
-    underline: 'bg-transparent text-secondary hover:text-primary data-[state=active]:text-accent data-[state=active]:font-semibold',
-    pills: 'bg-surface text-secondary hover:text-primary data-[state=active]:bg-accent data-[state=active]:text-white data-[state=active]:shadow-cyber-soft',
+    default: isActive
+      ? 'bg-transparent text-primary font-semibold border-b-2 border-primary -mb-px rounded-none'
+      : 'bg-transparent text-secondary hover:text-primary border-b-2 border-transparent -mb-px rounded-none',
+    underline: isActive
+      ? 'bg-transparent text-accent font-semibold border-b-2 border-accent -mb-px rounded-none'
+      : 'bg-transparent text-secondary hover:text-primary border-b-2 border-transparent -mb-px rounded-none',
+    pills: isActive
+      ? 'bg-surface text-primary font-semibold shadow-sm border border-border rounded-control'
+      : 'bg-transparent text-secondary hover:text-primary hover:bg-surface/50 border border-transparent rounded-control',
   };
 
-  const baseStyles = 'inline-flex items-center justify-center px-4 py-2 text-sm font-medium rounded-control transition-all duration-fast disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface';
+  const baseStyles = 'inline-flex items-center justify-center px-3.5 py-2 text-xs font-medium transition-all duration-fast disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface';
+
+  const underlineStyles = isUnderline ? {
+    borderTop: 'none',
+    borderLeft: 'none',
+    borderRight: 'none',
+    borderBottomWidth: '2px',
+    borderBottomStyle: 'solid',
+    borderBottomColor: isActive ? 'var(--accent)' : 'transparent',
+    borderRadius: 0,
+    backgroundColor: 'transparent',
+    marginBottom: '-1px',
+    ...style,
+  } : style;
 
   return (
     <button
@@ -82,9 +159,11 @@ export const TabTrigger = forwardRef(function TabTrigger({
       role="tab"
       aria-selected={isActive}
       aria-disabled={disabled}
+      data-state={isActive ? 'active' : 'inactive'}
       id={`tab-${value}`}
       tabIndex={isActive ? 0 : -1}
-      className={`${baseStyles} ${variants[variant]} ${isActive ? 'data-[state=active]' : ''} ${className}`}
+      className={`${baseStyles} ${variants[variant] || variants.default} ${className}`}
+      style={underlineStyles}
       onClick={onClick}
       disabled={disabled}
       {...props}
@@ -120,5 +199,3 @@ export const TabContent = forwardRef(function TabContent({
 });
 
 TabContent.displayName = 'TabContent';
-
-import React from 'react';
