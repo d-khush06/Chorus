@@ -828,7 +828,10 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
     const isCyberQuery = activeMode === 'cyber' || /tamper|cyber|threat|hack|fake|manipulat|forge|deepfake|splice|anomaly/i.test(actualPrompt);
     const sessionMode = isCyberQuery ? 'cyber' : 'general';
 
-    if (!activeSession) {
+    const isUrl = actualPrompt.startsWith('http://') || actualPrompt.startsWith('https://') || actualPrompt.startsWith('rtsp://');
+    const hasVideoTarget = !!attachedFile || isUrl || isLiveStream;
+
+    if (!activeSession || hasVideoTarget) {
       const newId = 'hist-' + Date.now();
       const videoName = attachedFile ? attachedFile.name : null;
 
@@ -881,9 +884,6 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
       if (effectiveModel === 'deepthink') {
         setIsThinking(true);
       }
-
-      const isUrl = actualPrompt.startsWith('http://') || actualPrompt.startsWith('https://') || actualPrompt.startsWith('rtsp://');
-      const hasVideoTarget = !!pendingFile || isUrl || isLiveStream;
 
       // ─── CONVERSATIONAL MODE: NO VIDEO OR URL PROVIDED ───
       if (!hasVideoTarget) {
@@ -938,10 +938,24 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
       let playlistData = null;
 
       try {
+        let finalUrl = '';
+        let finalPrompt = actualPrompt;
+
+        if (isYouTube && detectedYtUrl) {
+          finalUrl = detectedYtUrl;
+          finalPrompt = actualPrompt.replace(detectedYtUrl, '').trim();
+        } else if (isLiveStream && streamUrl && actualPrompt.includes(streamUrl)) {
+          finalUrl = streamUrl;
+          finalPrompt = actualPrompt.replace(streamUrl, '').trim();
+        } else if (isUrl) {
+          finalUrl = actualPrompt;
+          finalPrompt = '';
+        }
+
         const res = await analyzeVideo({
           videoFile: pendingFile,
-          prompt: isUrl ? '' : actualPrompt,
-          url: isUrl ? actualPrompt : '',
+          prompt: finalPrompt,
+          url: finalUrl,
           mode: sessionMode,
           model: effectiveModel
         });

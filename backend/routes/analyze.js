@@ -66,7 +66,7 @@ router.post('/', protect, upload.single('video'), async (req, res) => {
     }
   }
 
-  const source_type = videoFile ? 'local_upload' : (url.includes('youtube') ? 'youtube' : 'live_rtsp');
+  const source_type = videoFile ? 'local_upload' : ((url.includes('youtube') || url.includes('youtu.be')) ? 'youtube' : 'live_rtsp');
   const videoPath = videoFile ? videoFile.path : null;
   const rawHash = videoPath ? computeFileHash(videoPath) : crypto.randomBytes(32).toString('hex');
 
