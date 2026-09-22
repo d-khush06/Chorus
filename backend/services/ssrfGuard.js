@@ -40,6 +40,26 @@ const BLOCKED_IPV6_RANGES = [
 // https:// = HLS streams from cloud DVRs or IP cameras with web interface
 const ALLOWED_SCHEMES = new Set(['https', 'rtsp', 'rtsps', 'http']);
 
+// Trusted tunnel provider hostnames — these are always allowed regardless of
+// which IP they resolve to, since the IP is a Cloudflare / ngrok edge server,
+// not the actual camera (the camera sits behind the tunnel).
+const TRUSTED_TUNNEL_SUFFIXES = [
+  '.trycloudflare.com',   // Cloudflare Quick Tunnels (no account needed)
+  '.cfargotunnel.com',    // Cloudflare named tunnels
+  '.cloudflare.com',
+  '.tcp.ngrok.io',        // ngrok TCP tunnels
+  '.ngrok-free.app',      // ngrok free-tier HTTP tunnels
+  '.ngrok.app',           // ngrok paid HTTP tunnels
+  '.ngrok.io',            // ngrok legacy
+  '.serveo.net',          // Serveo SSH tunnels
+  '.loca.lt',             // localtunnel.me
+];
+
+function isTrustedTunnel(hostname) {
+  const h = (hostname || '').toLowerCase();
+  return TRUSTED_TUNNEL_SUFFIXES.some(suffix => h.endsWith(suffix));
+}
+
 function ipInCIDR(ip, cidr) {
   const [rangeIp, bits] = cidr.split('/');
   const mask = parseInt(bits, 10);
@@ -139,14 +159,29 @@ async function validateUrl(inputUrl, options = {}) {
     return { valid: false, reason: 'Missing hostname in URL', statusCode: 400 };
   }
 
-  // Check if configured relay host is exempt
+  // ── Fast-path: trusted tunnel providers ─────────────────────────────────
+  // Cloudflare / ngrok / Serveo edge IPs are NOT private, but we allow them
+  // unconditionally since they are just relay edges, not internal services.
+  if (isTrustedTunnel(hostname)) {
+    console.log(`[ssrfGuard] Trusted tunnel provider: ${hostname} — skipping IP validation`);
+    return {
+      valid: true,
+      hostname,
+      resolvedIps: [],
+      validatedIp: hostname,   // use hostname directly; FFmpeg resolves at connect time
+      isTunnel: true,
+      isRelay: false,
+    };
+  }
+
+  // ── Fast-path: configured local RTSP relay (MediaMTX etc.) ──────────────
   if (isRelayExempt(hostname)) {
     return {
       valid: true,
       hostname,
       resolvedIps: ['127.0.0.1'],
       validatedIp: '127.0.0.1',
-      isRelay: true
+      isRelay: true,
     };
   }
 
@@ -162,44 +197,50 @@ async function validateUrl(inputUrl, options = {}) {
     return { valid: false, reason: 'No IP addresses found for hostname', statusCode: 403 };
   }
 
-  // Public-internet CCTV: if ALLOW_PUBLIC_RTSP=true, skip the private-IP block
-  // for RTSP/RTSPS URLs. This enables cameras reachable via public IP, DDNS,
-  // or tunnel (e.g. Cloudflare Tunnel, ngrok) without being on the same network.
-  const allowPublicRtsp = (process.env.ALLOW_PUBLIC_RTSP || '').toLowerCase() === 'true';
-  const isRtspScheme = scheme === 'rtsp' || scheme === 'rtsps';
+  // ── Private-IP enforcement ───────────────────────────────────────────────
+  //
+  // There are now three modes:
+  //   1. ALLOW_PUBLIC_RTSP=true   → ANY RTSP/RTSPS URL passes (hotspot, DDNS, public IP)
+  //   2. ALLOWED_RTSP_TARGETS=*   → ALL private IPs allowed for that scheme
+  //   3. Default                  → Only allowlisted private IPs pass
+  //
+  const allowPublicRtsp  = (process.env.ALLOW_PUBLIC_RTSP || '').toLowerCase() === 'true';
+  const isRtspScheme     = scheme === 'rtsp' || scheme === 'rtsps';
 
-  // Validate every resolved IP against private / loopback / CGNAT ranges
+  // Mode 1: ALLOW_PUBLIC_RTSP blanket-allows all RTSP regardless of IP
+  if (allowPublicRtsp && isRtspScheme) {
+    console.log(`[ssrfGuard] ALLOW_PUBLIC_RTSP=true — allowing ${hostname} (${resolvedIps.join(', ')})`);
+    return {
+      valid: true,
+      hostname,
+      resolvedIps,
+      validatedIp: resolvedIps[0],
+      isRelay: false,
+    };
+  }
+
+  // Mode 2 + 3: per-IP check
   for (const ip of resolvedIps) {
-    if (isPrivateIP(ip)) {
-      if (options.allowPrivate) {
-        continue;
-      }
-      // Skip private-IP block for public RTSP if explicitly allowed
-      if (allowPublicRtsp && isRtspScheme) {
-        console.warn(`[ssrfGuard] ALLOW_PUBLIC_RTSP: bypassing private-IP block for ${ip} (${hostname})`);
-        continue;
-      }
-      // Check if IP is in the admin allowlist
-      const isAllowed = allowedTargets.some(target => {
-        if (target === '*') return true;
-        if (target.includes('/')) {
-          try {
-            return ipInCIDR(ip, target);
-          } catch (e) {
-            return false;
-          }
-        }
-        return ip === target || hostname === target;
-      });
+    if (!isPrivateIP(ip)) continue;  // public IP — always fine
 
-      if (!isAllowed) {
-        return {
-          valid: false,
-          reason: `Access to private IP address ${ip} is blocked by SSRF guard. Add to ALLOWED_RTSP_TARGETS to permit.`,
-          statusCode: 403,
-          blockedIp: ip
-        };
+    if (options.allowPrivate) continue;
+
+    // Check admin allowlist (ALLOWED_RTSP_TARGETS)
+    const isAllowed = allowedTargets.some(target => {
+      if (target === '*') return true;
+      if (target.includes('/')) {
+        try { return ipInCIDR(ip, target); } catch (e) { return false; }
       }
+      return ip === target || hostname === target;
+    });
+
+    if (!isAllowed) {
+      return {
+        valid:      false,
+        reason:     `Access to private IP ${ip} is blocked. Add it to ALLOWED_RTSP_TARGETS, or set ALLOW_PUBLIC_RTSP=true for internet cameras.`,
+        statusCode: 403,
+        blockedIp:  ip,
+      };
     }
   }
 
