@@ -64,6 +64,32 @@ function buildGeneralOutput(pipelineData, fileMeta = {}, verification = null, el
   const analyticsAnswer = pipelineData?.domain_output?.analytics?.user_question_answer;
   const enrichedSummary = pipelineData?.domain_output?.enriched_summary;
 
+  let flashMetadataLine = '';
+  if (pipelineData?.key_features || pipelineData?.scene_result) {
+    const kf = pipelineData.key_features || {};
+    const sceneCount = kf.scene_count || scenes.length || 0;
+    const dur = kf.duration_seconds || realDuration || 0;
+    const fps = kf.fps || realFps || 30;
+    const res = kf.resolution || realRes || '';
+    const manipulation = pipelineData?.manipulation_result?.verdict;
+    const qualityScore = pipelineData?.quality_result?.overall_verdict;
+
+    let parts = [];
+    if (dur > 0) parts.push(`${Number(dur).toFixed(1)}s duration`);
+    if (sceneCount > 0) parts.push(`${sceneCount} scene${sceneCount !== 1 ? 's' : ''}`);
+    if (fps > 0) parts.push(`${fps} fps`);
+    if (res) parts.push(res);
+
+    let statusLine = '';
+    if (manipulation === 'FLAGGED') {
+      statusLine = ' ⚠️ Potential manipulation/AI detected.';
+    } else if (manipulation === 'PASS') {
+      statusLine = ' Integrity check passed.';
+    }
+    if (qualityScore === 'FAIL') statusLine += ' Quality gate flagged issues.';
+    flashMetadataLine = `Flash metadata: ${parts.join(', ')}.${statusLine}`;
+  }
+
   // Priority 1: Executive summary from domain output (if it's real analysis, not a tool_call or generic)
   if (execSum && typeof execSum === 'string' && execSum.trim() 
       && !execSum.includes('tool_call') && !execSum.includes('Monitored Window')
@@ -76,7 +102,7 @@ function buildGeneralOutput(pipelineData, fileMeta = {}, verification = null, el
            && !rawVl.includes('Visual keyframes show')
            && !rawVl.includes('tool_call')
            && !rawVl.includes('black frame')) {
-    overview = rawVl;
+    overview = rawVl + (flashMetadataLine ? `\n\n*${flashMetadataLine}*` : '');
   }
   // Priority 3: Analytics user question answer
   else if (analyticsAnswer && typeof analyticsAnswer === 'string' && analyticsAnswer.trim()
@@ -93,36 +119,13 @@ function buildGeneralOutput(pipelineData, fileMeta = {}, verification = null, el
   else if (pipelineData?.asr_result?.full_transcript && pipelineData.asr_result.full_transcript.length > 10) {
     overview = `Speech transcript analysis: "${pipelineData.asr_result.full_transcript}". Visual content analyzed across ${scenes.length} scene(s).`;
   }
-  // Priority 6: Flash-mode structural summary — build from key_features + scene_result (fast, no LLM needed)
-  else if (pipelineData?.key_features || pipelineData?.scene_result) {
-    const kf = pipelineData.key_features || {};
-    const sceneCount = kf.scene_count || scenes.length || 0;
-    const dur = kf.duration_seconds || realDuration || 0;
-    const fps = kf.fps || realFps || 30;
-    const res = kf.resolution || realRes || '';
-    const manipulation = pipelineData?.manipulation_result?.verdict;
-    const qualityScore = pipelineData?.quality_result?.overall_verdict;
+  // Priority 6: Flash-mode structural summary (if VL failed or missing)
+  else if (flashMetadataLine) {
     const motionLevel = pipelineData?.key_features?.avg_motion_score;
-
-    let parts = [];
-    if (dur > 0) parts.push(`${Number(dur).toFixed(1)}s duration`);
-    if (sceneCount > 0) parts.push(`${sceneCount} scene${sceneCount !== 1 ? 's' : ''}`);
-    if (fps > 0) parts.push(`${fps} fps`);
-    if (res) parts.push(res);
-
-    let statusLine = '';
-    if (manipulation === 'FLAGGED') {
-      statusLine = ' ⚠️ Potential manipulation or AI-generation detected.';
-    } else if (manipulation === 'PASS') {
-      statusLine = ' Integrity check passed — no manipulation indicators found.';
-    }
-    if (qualityScore === 'FAIL') statusLine += ' Quality gate flagged issues with this video.';
-
     const motionDesc = motionLevel != null
       ? (motionLevel > 0.5 ? ' High motion activity detected.' : motionLevel > 0.2 ? ' Moderate motion activity.' : ' Low motion / mostly static content.')
       : '';
-
-    overview = `Flash analysis complete. Video metadata: ${parts.join(', ')}.${statusLine}${motionDesc} Full visual description requires Deepthink mode.`;
+    overview = `Flash analysis complete. ${flashMetadataLine}${motionDesc} Full visual description requires Deepthink mode.`;
   }
   // Priority 7: Generic fallback
   else {
@@ -139,6 +142,12 @@ function buildGeneralOutput(pipelineData, fileMeta = {}, verification = null, el
     takeaways = domainFinal.key_findings.slice(0, 4).map((f, idx) => ({
       label: `Key Finding ${idx + 1}`,
       detail: typeof f === 'string' ? f : (f.finding || f.description || JSON.stringify(f))
+    }));
+  } else if (scenes && scenes.length > 0) {
+    // Flash mode fallback for takeaways
+    takeaways = scenes.slice(0, 4).map((s, idx) => ({
+      label: `Scene ${idx + 1} (${s.start}s - ${s.end}s)`,
+      detail: s.label || s.vl_description || `Visual segment detected at ${s.start}s`
     }));
   }
 
