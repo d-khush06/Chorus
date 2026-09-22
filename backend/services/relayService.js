@@ -15,32 +15,30 @@ function getFfmpegPath() {
   if (cachedFfmpegPath && fs.existsSync(cachedFfmpegPath)) {
     return cachedFfmpegPath;
   }
+
+  // 1. Explicit env override
   if (process.env.FFMPEG_PATH && fs.existsSync(process.env.FFMPEG_PATH)) {
     cachedFfmpegPath = process.env.FFMPEG_PATH;
     return cachedFfmpegPath;
   }
 
-  const defaultCandidates = [
-    'C:\\Users\\mpdell43212p\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\imageio_ffmpeg\\binaries\\ffmpeg-win-x86_64-v7.1.exe',
-    'C:\\Users\\DELL\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\site-packages\\imageio_ffmpeg\\binaries\\ffmpeg-win-x86_64-v7.1.exe',
-    'ffmpeg'
-  ];
-
-  for (const candidate of defaultCandidates) {
-    if (candidate === 'ffmpeg' || fs.existsSync(candidate)) {
-      cachedFfmpegPath = candidate;
-      return cachedFfmpegPath;
-    }
-  }
-
+  // 2. Dynamically ask Python's imageio_ffmpeg for the bundled binary
   try {
-    const pyOutput = execSync('python -c "import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())"', { encoding: 'utf-8' }).trim();
+    const pyOutput = execSync(
+      'python -c "import imageio_ffmpeg; print(imageio_ffmpeg.get_ffmpeg_exe())"',
+      { encoding: 'utf-8', timeout: 5000 }
+    ).trim();
     if (pyOutput && fs.existsSync(pyOutput)) {
       cachedFfmpegPath = pyOutput;
+      console.log(`[RelayService] ffmpeg resolved via imageio_ffmpeg: ${cachedFfmpegPath}`);
       return cachedFfmpegPath;
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn('[RelayService] imageio_ffmpeg lookup failed:', e.message);
+  }
 
+  // 3. Fall back to system ffmpeg on PATH
+  console.warn('[RelayService] Falling back to system ffmpeg on PATH');
   return 'ffmpeg';
 }
 

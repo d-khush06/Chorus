@@ -971,7 +971,10 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
             const sseUrl = `${API_BASE}/api/analyze/runs/${res.runId}/events${ticket ? `?ticket=${ticket}` : ''}`;
             await new Promise((resolve) => {
               const es = new EventSource(sseUrl);
+              let settled = false;
               const cleanup = () => {
+                if (settled) return;
+                settled = true;
                 try { es.close(); } catch {}
                 resolve();
               };
@@ -995,12 +998,20 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
                 } catch (e) {}
               };
 
-              es.onerror = () => {
-                cleanup();
-              };
+              es.onerror = () => { cleanup(); };
 
-              // Safety polling check
-              setTimeout(async () => {
+              // Poll the REST endpoint every 5s for up to 5 minutes as a reliable fallback
+              // (SSE can silently drop on some networks / proxies)
+              const POLL_INTERVAL = 5000;
+              const MAX_WAIT_MS = 5 * 60 * 1000; // 5 minutes
+              const pollStart = Date.now();
+              const pollTimer = setInterval(async () => {
+                if (settled) { clearInterval(pollTimer); return; }
+                if (Date.now() - pollStart > MAX_WAIT_MS) {
+                  clearInterval(pollTimer);
+                  cleanup();
+                  return;
+                }
                 try {
                   const token = localStorage.getItem('token');
                   const checkRes = await fetch(`${API_BASE}/api/analyze/runs/${res.runId}`, {
@@ -1008,11 +1019,15 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
                   });
                   if (checkRes.ok) {
                     const checkData = await checkRes.json();
+                    const runStatus = checkData.run?.status;
                     if (checkData.run?.result) apiResult = checkData.run.result;
+                    if (runStatus === 'completed' || runStatus === 'failed' || runStatus === 'cancelled') {
+                      clearInterval(pollTimer);
+                      cleanup();
+                    }
                   }
                 } catch (e) {}
-                cleanup();
-              }, 12000);
+              }, POLL_INTERVAL);
             });
           } else {
             apiResult = res.result;
@@ -1081,46 +1096,26 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
       // ─── CYBER MODE: FORENSIC AUDIT ───
       if (sessionMode === 'cyber') {
         const generatedCyberData = apiResult ? {
-          threatScore: apiResult.threatScore ?? 84,
+          threatScore: apiResult.threatScore ?? 0,
           threatLevel: apiResult.threatLevel || (apiResult.threatScore > 50 ? 'HIGH' : 'LOW'),
-          classification: apiResult.crimeClassification?.[0]?.category || 'Temporal Frame Anomaly & Tamper Risk',
+          classification: apiResult.crimeClassification?.[0]?.category || 'Analysis in progress',
           modelUsed: effectiveModel,
-          anomalies: (apiResult.suspiciousTimestamps || []).length > 0
-            ? apiResult.suspiciousTimestamps.map(s => ({
-                time: `00:${String(s.time).padStart(2, '0')}`,
-                type: s.label || 'Integrity Anomaly',
-                severity: (s.severity || 'HIGH').toUpperCase(),
-                desc: `Confidence: ${Math.round((s.confidence || 0.9) * 100)}% — Frame sequence logged in custody registry.`
-              }))
-            : [
-                { time: '00:08 – 00:15', type: 'Discontinuous Optical Vector', severity: 'CRITICAL', desc: 'Frame sequence displays artificial frame injection and temporal displacement.' },
-                { time: '00:12', type: 'Compression Rate Jump', severity: 'HIGH', desc: 'Macroblock rate variance exceeds standard encoder thresholds by 32%.' }
-              ],
-          integrityStatus: apiResult.integrityStatus || 'Tamper Detected (High Confidence)',
-          hashMatch: apiResult.evidenceHash ? `SHA-256: ${apiResult.evidenceHash.slice(0, 24)}…` : 'Ledger Registry Verified',
-          mitigationActions: [
-            'Isolate and preserve target timestamp segment in Evidence Room.',
-            'Cross-check camera custody chain in Evidence Room.',
-            'Export tamper digest for incident response.'
-          ]
-        } : {
-          threatScore: 84,
-          threatLevel: 'HIGH',
-          classification: 'Temporal Frame Anomaly & Tamper Risk',
-          modelUsed: effectiveModel,
-          anomalies: [
-            { time: '00:08 – 00:15', type: 'Discontinuous Optical Vector', severity: 'CRITICAL', desc: 'Frame sequence displays artificial frame injection and temporal displacement.' },
-            { time: '00:12', type: 'Compression Rate Jump', severity: 'HIGH', desc: 'Macroblock rate variance exceeds standard encoder thresholds by 32%.' },
-            { time: '00:00 – End', type: 'Metadata Audit', severity: 'MEDIUM', desc: 'Container timestamp header does not match camera hardware firmware signature.' }
-          ],
-          integrityStatus: 'Tamper Detected (High Confidence)',
-          hashMatch: 'Mismatch with Ledger Registry',
-          mitigationActions: [
-            'Isolate and preserve target timestamp segment (00:08–00:15).',
-            'Cross-check camera custody chain in Evidence Room.',
-            'Export tamper digest for incident response.'
-          ]
-        };
+          anomalies: (apiResult.suspiciousTimestamps || []).map(s => ({
+              time: `00:${String(s.time).padStart(2, '0')}`,
+              type: s.label || 'Integrity Anomaly',
+              severity: (s.severity || 'LOW').toUpperCase(),
+              desc: `Confidence: ${Math.round((s.confidence || 0) * 100)}% — Frame sequence logged in custody registry.`
+            })),
+          integrityStatus: apiResult.integrityStatus || 'Pending verification',
+          hashMatch: apiResult.evidenceHash ? `SHA-256: ${apiResult.evidenceHash.slice(0, 24)}…` : 'Pending',
+          mitigationActions: []
+        } : null;
+
+        // If no apiResult, skip cyber report entirely
+        if (!generatedCyberData) {
+          setIsGenerating(false);
+          return;
+        }
 
         const assistantMsg = {
           id: 'msg-' + (Date.now() + 1),
@@ -1156,35 +1151,29 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
       const realFps = Math.round(apiResult?.fps || 30);
       const realDuration = apiResult?.duration !== undefined && apiResult?.duration !== null ? Number(apiResult.duration) : null;
       const totalFrames = apiResult?.totalFrames || (realDuration ? Math.round(realDuration * realFps) : null);
-      const framesString = totalFrames 
+      const framesString = totalFrames
         ? `${totalFrames} frames @ ${realFps}fps (${realDuration}s)`
-        : (apiResult?.summary?.dynamics?.analyzedFrames || (realDuration ? `${realDuration}s Video Ingest` : 'Processed Video Frames'));
+        : (apiResult?.summary?.dynamics?.analyzedFrames || '');
+
+      // Build overview from real pipeline data; if pipeline gave nothing, show a clear error message
+      const pipelineOverview = apiResult?.summary?.overview
+        || (typeof apiResult?.vl_output === 'string' ? apiResult.vl_output : null)
+        || (typeof apiResult?.detailed_analysis?.[0] === 'string' ? apiResult.detailed_analysis[0] : null)
+        || (apiResult
+            ? 'Analysis complete — no summary text was returned by the pipeline. Check the backend logs.'
+            : 'Pipeline did not complete in time or returned no result. The video may still be processing — try re-uploading or check that the backend server is running.');
+      const pipelineTakeaways = apiResult?.summary?.takeaways || apiResult?.detailed_analysis?.slice(0, 6)?.map((d, idx) => ({ label: `Finding ${idx + 1}`, detail: typeof d === 'string' ? d : JSON.stringify(d) })) || [];
+      const pipelineScenes = apiResult?.scenes || [];
 
       if (isYouTube) {
         generatedSummary = {
-          title: apiResult?.summary?.title || (title ? `${title} — Intelligence Summary` : 'YouTube Video Analysis & Breakdown'),
+          title: apiResult?.summary?.title || (title ? `${title} — Intelligence Summary` : 'Video Analysis'),
           sourceType: 'YouTube',
           youtubeUrl: detectedYtUrl,
           modelUsed: effectiveModel,
-          overview: apiResult?.summary?.overview || `Automated multimodal video ingestion from YouTube (${detectedYtUrl}). Extracted transcript, scene keyframes, and speaker delivery to produce structured chapters, core themes, and actionable executive takeaways.`,
-          takeaways: apiResult?.summary?.takeaways || [],
-          chapters: apiResult?.summary?.chapters || (apiResult?.scenes || []).map((s, idx) => ({ title: s.label || `Scene ${idx + 1}`, time: `${s.start}s - ${s.end}s` })),
-          dynamics: {
-            analyzedFrames: framesString || 'YouTube Transcript Synchronized',
-            engine: effectiveModel === 'deepthink' ? 'Chorus Deepthink (YouTube Adapter)' : 'Chorus Flash'
-          },
-          actionItems: apiResult?.summary?.actionItems || [],
-          detailed_analysis: apiResult?.detailed_analysis || [],
-          asr_transcript: apiResult?.asr_transcript || null,
-          scenes: apiResult?.scenes || []
-        };
-      } else {
-        generatedSummary = {
-          title: apiResult?.summary?.title || (title ? `${title} — Intelligence Summary` : 'Chorus Video Intelligence Summary'),
-          modelUsed: effectiveModel,
-          overview: apiResult?.summary?.overview || (videoName ? `Automated multimodal breakdown completed for ${videoName}. Processed scene keyframes and Whisper audio track.` : 'Automated multimodal breakdown completed.'),
-          takeaways: apiResult?.summary?.takeaways || apiResult?.detailed_analysis?.slice(0, 4)?.map((d, idx) => ({ label: `Finding ${idx + 1}`, detail: typeof d === 'string' ? d : JSON.stringify(d) })) || [],
-          chapters: apiResult?.summary?.chapters || (apiResult?.scenes || []).map((s, idx) => ({ title: s.label || `Scene ${idx + 1}`, time: `${s.start}s - ${s.end}s` })),
+          overview: pipelineOverview,
+          takeaways: pipelineTakeaways,
+          chapters: apiResult?.summary?.chapters || pipelineScenes.map((s, idx) => ({ title: s.label || `Scene ${idx + 1}`, time: `${s.start}s - ${s.end}s` })),
           dynamics: {
             analyzedFrames: framesString,
             engine: effectiveModel === 'deepthink' ? 'Chorus Deepthink' : 'Chorus Flash'
@@ -1192,7 +1181,23 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
           actionItems: apiResult?.summary?.actionItems || [],
           detailed_analysis: apiResult?.detailed_analysis || [],
           asr_transcript: apiResult?.asr_transcript || null,
-          scenes: apiResult?.scenes || []
+          scenes: pipelineScenes
+        };
+      } else {
+        generatedSummary = {
+          title: apiResult?.summary?.title || (title ? `${title} — Intelligence Summary` : 'Video Analysis'),
+          modelUsed: effectiveModel,
+          overview: pipelineOverview,
+          takeaways: pipelineTakeaways,
+          chapters: apiResult?.summary?.chapters || pipelineScenes.map((s, idx) => ({ title: s.label || `Scene ${idx + 1}`, time: `${s.start}s - ${s.end}s` })),
+          dynamics: {
+            analyzedFrames: framesString,
+            engine: effectiveModel === 'deepthink' ? 'Chorus Deepthink' : 'Chorus Flash'
+          },
+          actionItems: apiResult?.summary?.actionItems || [],
+          detailed_analysis: apiResult?.detailed_analysis || [],
+          asr_transcript: apiResult?.asr_transcript || null,
+          scenes: pipelineScenes
         };
       }
 
@@ -1292,7 +1297,7 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
         if (overview) {
           replyText = overview + (transcript ? `\n\nSpoken Dialogue: "${transcript}"` : '');
         } else {
-          replyText = `Based on the video analysis, the models identified the primary visual events and speech. Ask about the actions, setting, or spoken words for more details.`;
+          replyText = `No analysis data available for this video. The pipeline may not have completed successfully.`;
         }
       }
     }

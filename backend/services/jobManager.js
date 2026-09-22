@@ -25,17 +25,21 @@ class JobManager extends EventEmitter {
 
   loadPersistedRuns() {
     try {
-      const files = fs.readdirSync(RUNS_DIR).filter(f => f.endsWith('.json'));
+      const files = fs.readdirSync(RUNS_DIR).filter(f => f.endsWith('.json') && !f.startsWith('pipeline-out-'));
       for (const file of files) {
         const runPath = path.join(RUNS_DIR, file);
         const runData = JSON.parse(fs.readFileSync(runPath, 'utf-8'));
-        if (runData.status === 'running') {
+        if (runData.status === 'running' || runData.status === 'queued') {
           runData.status = 'failed';
           runData.error = 'Server restarted while run was in progress';
+          runData.pid = null;
+          runData.completed_at = new Date().toISOString();
+          // Persist the corrected status back to disk
+          fs.writeFileSync(runPath, JSON.stringify(runData, null, 2));
         }
         this.runs.set(runData.id, runData);
       }
-      console.log(`[JobManager] Loaded ${this.runs.size} persisted runs`);
+      console.log(`[JobManager] Loaded ${this.runs.size} persisted runs (running/queued cleared to failed)`);
     } catch (err) {
       console.error('[JobManager] Failed to load persisted runs:', err.message);
     }
@@ -70,6 +74,7 @@ class JobManager extends EventEmitter {
     const run = {
       id: runId,
       mode: options.mode || 'general',
+      model: options.model || 'flash',
       source_type: options.source_type || 'local_upload',
       entry_point: options.entry_point || 'forensic',
       case_id: options.case_id || null,
@@ -135,24 +140,44 @@ class JobManager extends EventEmitter {
     const runnerScript = path.join(repoRoot, 'pipeline_runner.py');
     const outputFile = path.join(RUNS_DIR, `pipeline-out-${runId}.json`);
 
-    const PYTHON_CANDIDATES = [
-      process.env.PYTHON_PATH,
-      'C:\\Users\\mpdell43212p\\AppData\\Local\\Programs\\Python\\Python312\\python.exe',
-      'C:\\Users\\DELL\\AppData\\Local\\Programs\\Python\\Python311\\python.exe',
-      'python',
-      'python3'
-    ].filter(Boolean);
-
+    // Resolve Python executable: env var > `python` on PATH > py launcher
     function getPythonExecutable() {
-      for (const p of PYTHON_CANDIDATES) {
-        if (p === 'python' || p === 'python3' || fs.existsSync(p)) {
-          return p;
-        }
+      const { execSync } = require('child_process');
+
+      // 1. Explicit env override
+      if (process.env.PYTHON_PATH && fs.existsSync(process.env.PYTHON_PATH)) {
+        return process.env.PYTHON_PATH;
       }
+
+      // 2. Ask `python` to self-report its path (works when python is on PATH)
+      try {
+        const pyPath = execSync('python -c "import sys; print(sys.executable)"', {
+          encoding: 'utf-8',
+          timeout: 5000
+        }).trim();
+        if (pyPath && fs.existsSync(pyPath)) return pyPath;
+      } catch (e) {}
+
+      // 3. Try Windows py launcher as last resort
+      try {
+        const pyPath = execSync('py -3 -c "import sys; print(sys.executable)"', {
+          encoding: 'utf-8',
+          timeout: 5000
+        }).trim();
+        if (pyPath && fs.existsSync(pyPath)) return pyPath;
+      } catch (e) {}
+
       return 'python';
     }
 
     const pythonExe = getPythonExecutable();
+
+    // Flash model = skip heavy LLM stages for speed:
+    //   --skip-asr  → no Whisper transcription
+    //   --skip-vl   → no VL vision-language model (frame-by-frame captioning)
+    //   --skip-output → no Qwen2.5-7B domain output LLM
+    // Deepthink = full pipeline (all stages)
+    const isFlash = !run.model || run.model === 'flash';
 
     const args = [
       runnerScript,
@@ -164,6 +189,13 @@ class JobManager extends EventEmitter {
       '--pretty',
       '--emit-events'
     ];
+
+    // Flash model: skip ASR + domain LLM but keep VL for visual descriptions
+    if (isFlash) {
+      args.push('--skip-asr');    // skip Whisper ASR (~30-90s)
+      // VL runs so we get actual visual frame descriptions
+      args.push('--skip-output'); // skip Qwen 7B domain output LLM (~30-60s)
+    }
 
     if (run.videoPath) {
       args.push('--video', run.videoPath);

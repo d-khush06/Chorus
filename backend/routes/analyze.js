@@ -50,7 +50,7 @@ function computeFileHash(filePath) {
 
 // POST /api/analyze - Async job creation, returns runId immediately
 router.post('/', protect, upload.single('video'), async (req, res) => {
-  const { mode = 'general', prompt = '', url = '', entry_point = 'forensic', case_id = null, notes = '' } = req.body;
+  const { mode = 'general', prompt = '', url = '', model = 'flash', entry_point = 'forensic', case_id = null, notes = '' } = req.body;
   const videoFile = req.file;
 
   if (!videoFile && !prompt.trim() && !url.trim()) {
@@ -72,7 +72,7 @@ router.post('/', protect, upload.single('video'), async (req, res) => {
 
   const jobManager = getJobManager();
   const run = jobManager.createRun({
-    mode, source_type, entry_point, case_id, notes,
+    mode, model, source_type, entry_point, case_id, notes,
     videoPath, url: url || null, prompt, rawHash,
     user_id: req.user._id.toString()
   });
