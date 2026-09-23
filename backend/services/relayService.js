@@ -176,9 +176,9 @@ class RelayService {
         '-c:a', 'aac',
         '-b:a', '64k',
         '-f', 'hls',
-        '-hls_time', '2',
-        '-hls_list_size', '4',
-        '-hls_flags', 'delete_segments+append_list',
+        '-hls_time', '1',
+        '-hls_list_size', '3',
+        '-hls_flags', 'delete_segments',
         playlistPath
       ];
     } else {

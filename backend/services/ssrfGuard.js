@@ -122,6 +122,8 @@ function isPrivateIP(ip) {
 }
 
 function getAllowedTargets() {
+  // SECURITY REMINDER: Never commit real camera credentials or IPs to source control.
+  // ALLOWED_RTSP_TARGETS is loaded from .env which must be gitignored.
   const envTargets = process.env.ALLOWED_RTSP_TARGETS;
   if (!envTargets) return [];
   return envTargets.split(',').map(t => t.trim()).filter(Boolean);

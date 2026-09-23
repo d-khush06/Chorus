@@ -107,7 +107,8 @@ export function LiveWatchPage() {
         enableWorker: true,
         lowLatencyMode: true,
         backBufferLength: 30,
-        liveSyncDurationCount: 3
+        liveSyncDurationCount: 2,
+        liveMaxLatencyDurationCount: 3
       });
       hls.loadSource(hlsStreamUrl);
       hls.attachMedia(videoRef.current);
@@ -406,11 +407,15 @@ export function LiveWatchPage() {
     if (!agentQuestion.trim() || !runId) return;
     setIsAskingAgent(true);
     setAgentAnswer(null);
+    const token = localStorage.getItem('token');
 
     try {
       const res = await fetch(`${API_BASE}/api/cyber/live/${runId}/ask`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ question: agentQuestion.trim() })
       });
       const data = await res.json();
@@ -440,8 +445,13 @@ export function LiveWatchPage() {
 
   // Load Standing Rules
   const loadRules = async (rId) => {
+    const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`${API_BASE}/api/cyber/live/${rId}/rules`);
+      const res = await fetch(`${API_BASE}/api/cyber/live/${rId}/rules`, {
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
+      });
       if (res.ok) {
         const data = await res.json();
         setRules(data.rules || []);
@@ -453,10 +463,14 @@ export function LiveWatchPage() {
   const handleAddRule = async () => {
     if (!newRulePrompt.trim() || !runId) return;
     setIsAddingRule(true);
+    const token = localStorage.getItem('token');
     try {
       const res = await fetch(`${API_BASE}/api/cyber/live/${runId}/rules`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ prompt: newRulePrompt.trim() })
       });
       if (res.ok) {
@@ -472,9 +486,13 @@ export function LiveWatchPage() {
   // Delete Standing Rule
   const handleDeleteRule = async (ruleId) => {
     if (!runId) return;
+    const token = localStorage.getItem('token');
     try {
       const res = await fetch(`${API_BASE}/api/cyber/live/${runId}/rules/${ruleId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: {
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        }
       });
       if (res.ok) {
         loadRules(runId);
@@ -754,7 +772,7 @@ export function LiveWatchPage() {
           </Card>
 
           {/* 30s Chunk Timeline */}
-          <Card variant="default" padding="md">
+          <Card variant="default" padding="md" className="min-w-0 overflow-hidden">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm">30s Sliding Chunk Timeline</CardTitle>

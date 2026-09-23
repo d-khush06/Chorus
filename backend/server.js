@@ -4,9 +4,13 @@ const cors = require('cors');
 const passport = require('passport');
 const session = require('express-session');
 const connectDB = require('./config/db');
+const { performHealthCheck } = require('./services/rtspHealthCheck');
 
 // Connect Database
 connectDB();
+
+// Run startup RTSP health check
+performHealthCheck();
 
 const app = express();
 

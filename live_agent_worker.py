@@ -36,6 +36,12 @@ def extract_frame_from_ts(ts_path):
     cap.release()
     
     if ret:
+        import numpy as np
+        # Check if frame is a corrupted solid color/gray frame (common in incomplete TS files)
+        # If standard deviation is extremely low, the frame is just a solid color (e.g., all gray)
+        if np.std(frame) < 5.0:
+            print("[LiveWorker] Skipped corrupted/solid color frame", file=sys.stderr)
+            return None
         return Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
     return None
 
@@ -64,7 +70,14 @@ def main():
             
         # Get the most recently modified .ts file
         latest_ts = max(ts_files, key=os.path.getmtime)
+        ts_mtime = os.path.getmtime(latest_ts)
         
+        # Prevent analyzing the exact same old chunk repeatedly if stream stalls
+        if time.time() - ts_mtime > args.interval * 1.5:
+            # Stream appears stalled, sleep and wait for fresh chunks
+            time.sleep(2)
+            continue
+            
         # 2. Extract a frame
         frame = extract_frame_from_ts(latest_ts)
         
@@ -78,40 +91,34 @@ def main():
             })
             
             try:
-                # 4. Run the local VL Model (PATH A: loads 4-bit, runs, and we unload it)
+                # 4. Run the local VL Model
                 print(f"[LiveWorker] Analyzing chunk {chunk_index}...", file=sys.stderr)
-                
-                # Mock metadata for the prompt
                 metadata = {
                     "video_title": f"Live Stream (Chunk {chunk_index})",
                     "duration_seconds": args.interval
                 }
-                
-                # Note: run_vision_analysis writes to vl_output.txt/json, but also returns text
                 analysis_text = run_vision_analysis([frame], args.question, metadata)
-                
                 if analysis_text:
-                    # 5. Emit OBSERVATION_EVENT
                     _emit_observation_event({
                         "text": analysis_text,
                         "confidence": 0.95
                     })
-                    
             except Exception as e:
                 print(f"[LiveWorker] Error running VL analysis: {e}", file=sys.stderr)
                 traceback.print_exc(file=sys.stderr)
             finally:
-                # Immediately unload to free the 8GB VRAM so other tasks can run
                 unload_vl_model()
                 
             chunk_index += 1
             
-        # 6. Sleep for the remainder of the interval
-        elapsed = time.time() - loop_start
-        sleep_time = max(0, args.interval - elapsed)
-        
-        if sleep_time > 0:
-            time.sleep(sleep_time)
+            # 6. Sleep for the remainder of the interval only if we successfully analyzed a frame
+            elapsed = time.time() - loop_start
+            sleep_time = max(0, args.interval - elapsed)
+            if sleep_time > 0:
+                time.sleep(sleep_time)
+        else:
+            # If we failed to extract a frame (e.g. incomplete TS segment), retry quickly
+            time.sleep(1)
 
 if __name__ == "__main__":
     main()

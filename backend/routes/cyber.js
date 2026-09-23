@@ -142,7 +142,7 @@ router.post('/cameras/test', protect, async (req, res) => {
       res.status(504).json({
         success: false,
         reachable: false,
-        error: `Connection timed out: Camera host at ${parsedUrl.hostname}:${port} did not respond within 3s. Ensure the device is powered on and accessible from this machine's network subnet.`,
+        error: `camera not reachable at ${parsedUrl.hostname} (credentials masked)`,
         camera_name,
         masked_url: masked,
         is_relay: false
@@ -166,7 +166,7 @@ router.post('/cameras/test', protect, async (req, res) => {
       res.status(502).json({
         success: false,
         reachable: false,
-        error: `Connection failed (${err.code || 'socket error'}): Unable to establish TCP connection with ${parsedUrl.hostname}:${port}.`,
+        error: `camera not reachable at ${parsedUrl.hostname} (credentials masked)`,
         camera_name,
         masked_url: masked,
         is_relay: false
