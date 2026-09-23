@@ -172,48 +172,63 @@ class JobManager extends EventEmitter {
 
     const pythonExe = getPythonExecutable();
 
-    // Flash model = skip heavy LLM stages for speed:
-    //   --skip-asr  → no Whisper transcription
-    //   --skip-vl   → no VL vision-language model (frame-by-frame captioning)
-    //   --skip-output → no Qwen2.5-7B domain output LLM
-    // Deepthink = full pipeline (all stages)
-    const isFlash = !run.model || run.model === 'flash';
+    let pyArgs = [];
+    if (run.source_type === 'live_rtsp') {
+      const liveAgentScript = path.join(repoRoot, 'live_agent_worker.py');
+      const hlsDir = path.join(repoRoot, 'backend', 'public', 'live', runId);
+      pyArgs = [
+        '-u',
+        liveAgentScript,
+        '--hls-dir', hlsDir,
+        '--run-id', runId,
+        '--question', run.prompt || 'Analyze this video.',
+        '--interval', '30'
+      ];
+      console.log(`[JobManager] Spawning live agent worker for ${runId}: ${pythonExe} ${pyArgs.join(' ')}`);
+    } else {
+      // Flash model = skip heavy LLM stages for speed:
+      //   --skip-asr  → no Whisper transcription
+      //   --skip-vl   → no VL vision-language model (frame-by-frame captioning)
+      //   --skip-output → no Qwen2.5-7B domain output LLM
+      // Deepthink = full pipeline (all stages)
+      const isFlash = !run.model || run.model === 'flash';
 
-    const args = [
-      runnerScript,
-      '--mode', run.mode,
-      '--question', run.prompt || 'Analyze this video for forensic evidence.',
-      '--output-file', outputFile,
-      '--fast',
-      '--skip-dedup',
-      '--pretty',
-      '--emit-events'
-    ];
+      const args = [
+        runnerScript,
+        '--mode', run.mode,
+        '--question', run.prompt || 'Analyze this video for forensic evidence.',
+        '--output-file', outputFile,
+        '--fast',
+        '--skip-dedup',
+        '--pretty',
+        '--emit-events'
+      ];
 
-    // Flash model: skip ASR + domain LLM but keep VL for visual descriptions
-    if (isFlash) {
-      args.push('--skip-asr');    // skip Whisper ASR (~30-90s)
-      // VL runs so we get actual visual frame descriptions
-      args.push('--skip-output'); // skip Qwen 7B domain output LLM (~30-60s)
+      // Flash model: skip ASR + domain LLM but keep VL for visual descriptions
+      if (isFlash) {
+        args.push('--skip-asr');    // skip Whisper ASR (~30-90s)
+        // VL runs so we get actual visual frame descriptions
+        args.push('--skip-output'); // skip Qwen 7B domain output LLM (~30-60s)
+      }
+
+      if (run.videoPath) {
+        args.push('--video', run.videoPath);
+        args.push('--source-type', run.source_type);
+      } else if (run.url) {
+        args.push('--url', run.url);
+        args.push('--source-type', run.source_type);
+      }
+
+      if (run.case_id) {
+        args.push('--case-id', run.case_id);
+      }
+      if (run.entry_point) {
+        args.push('--entry-point', run.entry_point);
+      }
+
+      pyArgs = ['-u', ...args];
+      console.log(`[JobManager] Spawning run ${runId}: ${pythonExe} ${maskRtspUrl(pyArgs.slice(1).join(' '))}`);
     }
-
-    if (run.videoPath) {
-      args.push('--video', run.videoPath);
-      args.push('--source-type', run.source_type);
-    } else if (run.url) {
-      args.push('--url', run.url);
-      args.push('--source-type', run.source_type);
-    }
-
-    if (run.case_id) {
-      args.push('--case-id', run.case_id);
-    }
-    if (run.entry_point) {
-      args.push('--entry-point', run.entry_point);
-    }
-
-    const pyArgs = ['-u', ...args];
-    console.log(`[JobManager] Spawning run ${runId}: ${pythonExe} ${maskRtspUrl(pyArgs.slice(1).join(' '))}`);
 
     const env = {
       ...process.env,
@@ -325,6 +340,33 @@ class JobManager extends EventEmitter {
 
     const lines = chunk.trim().split('\n');
     for (const line of lines) {
+      if (!line.trim()) continue;
+
+      // Try parsing raw JSON (used by live_agent_worker.py)
+      try {
+        const parsed = JSON.parse(line.trim());
+        if (parsed && parsed.type) {
+          if (parsed.type === 'CHUNK_EVENT') {
+            getSSEHub().emit(runId, { type: 'CHUNK_EVENT', chunk: parsed, ...parsed });
+          } else if (parsed.type === 'OBSERVATION_EVENT') {
+            getSSEHub().emit(runId, {
+              type: 'OBSERVATION_EVENT',
+              observation: parsed.text || parsed.observation || parsed.message || JSON.stringify(parsed),
+              text: parsed.text || parsed.observation || parsed.message || JSON.stringify(parsed),
+              confidence: parsed.confidence || 0.92,
+              ...parsed
+            });
+          } else if (parsed.type === 'ALERT_EVENT') {
+            getSSEHub().emit(runId, { type: 'ALERT_EVENT', alert: parsed, ...parsed });
+          } else {
+            getSSEHub().emit(runId, parsed);
+          }
+          continue; // Handled successfully
+        }
+      } catch (e) {
+        // Not JSON, continue to prefixed checks
+      }
+
       if (line.startsWith('STAGE_EVENT:')) {
         try {
           const event = JSON.parse(line.substring('STAGE_EVENT:'.length));
@@ -339,17 +381,26 @@ class JobManager extends EventEmitter {
       } else if (line.startsWith('CHUNK_EVENT:')) {
         try {
           const event = JSON.parse(line.substring('CHUNK_EVENT:'.length));
-          getSSEHub().emit(runId, { type: 'chunk', data: event });
+          // Use CHUNK_EVENT type so frontend handler matches
+          getSSEHub().emit(runId, { type: 'CHUNK_EVENT', chunk: event, ...event });
         } catch (e) {}
       } else if (line.startsWith('OBSERVATION_EVENT:')) {
         try {
           const event = JSON.parse(line.substring('OBSERVATION_EVENT:'.length));
-          getSSEHub().emit(runId, { type: 'observation', data: event });
+          // Use OBSERVATION_EVENT type + spread so frontend handler matches
+          getSSEHub().emit(runId, {
+            type: 'OBSERVATION_EVENT',
+            observation: event.text || event.observation || JSON.stringify(event),
+            text: event.text || event.observation || JSON.stringify(event),
+            confidence: event.confidence || 0.92,
+            ...event
+          });
         } catch (e) {}
       } else if (line.startsWith('ALERT_EVENT:')) {
         try {
           const event = JSON.parse(line.substring('ALERT_EVENT:'.length));
-          getSSEHub().emit(runId, { type: 'alert', data: event });
+          // Use ALERT_EVENT type + spread so frontend handler matches
+          getSSEHub().emit(runId, { type: 'ALERT_EVENT', alert: event, ...event });
         } catch (e) {}
       }
     }
@@ -478,7 +529,9 @@ class JobManager extends EventEmitter {
       progress: run.progress,
       current_stage: run.current_stage,
       stage_manifest: run.stage_manifest,
-      error: run.error
+      error: run.error,
+      result: run.result,
+      pipelineResult: run.pipelineResult
     };
   }
 }

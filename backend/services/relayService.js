@@ -164,10 +164,17 @@ class RelayService {
       args = [
         '-y',
         '-rtsp_transport', 'tcp',
-        '-stimeout', '5000000', // 5s socket timeout
+        '-timeout', '5000000',
         '-i', streamUrl,
-        '-c:v', 'copy',
+        // Transcode to H.264 for universal browser HLS compatibility
+        // (HEVC/H.265 cameras are NOT supported in Chrome/Firefox HLS players)
+        '-c:v', 'libx264',
+        '-preset', 'ultrafast',
+        '-tune', 'zerolatency',
+        '-vf', 'scale=1280:-2',    // cap at 1280px wide, keep aspect ratio
+        '-g', '50',                 // keyframe every 2s at 25fps
         '-c:a', 'aac',
+        '-b:a', '64k',
         '-f', 'hls',
         '-hls_time', '2',
         '-hls_list_size', '4',

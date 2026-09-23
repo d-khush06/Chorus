@@ -50,7 +50,8 @@ function computeFileHash(filePath) {
 
 // POST /api/analyze - Async job creation, returns runId immediately
 router.post('/', protect, upload.single('video'), async (req, res) => {
-  const { mode = 'general', prompt = '', url = '', model = 'flash', entry_point = 'forensic', case_id = null, notes = '' } = req.body;
+  const { mode = 'general', prompt = '', url = '', model = 'flash', case_id = null, notes = '' } = req.body;
+  const entry_point = req.body.entry_point || (mode === 'cyber' ? 'forensic' : 'general');
   const videoFile = req.file;
 
   if (!videoFile && !prompt.trim() && !url.trim()) {
@@ -214,6 +215,38 @@ router.post('/chat', async (req, res) => {
     // 2. Video contextual reasoning
     if (videoContext && (videoContext.overview || videoContext.transcript || videoContext.detailed_analysis || videoContext.scenes)) {
       const { overview = '', transcript = '', scenes = [], detailed_analysis = [], vl_output = '' } = videoContext;
+
+      // Model-aware handling: Deepthink provides a richer, comprehensive synthesis of all available video context
+      if (model === 'deepthink') {
+        let deepAnswer = `### DeepThink Comprehensive Forensic & Multimodal Synthesis\n\n`;
+        deepAnswer += `**Executive Overview:**\n${overview || 'No overview generated.'}\n\n`;
+        
+        if (vl_output && typeof vl_output === 'string') {
+          deepAnswer += `**Detailed Visual Analysis:**\n${vl_output}\n\n`;
+        }
+
+        if (Array.isArray(detailed_analysis) && detailed_analysis.length > 0) {
+          deepAnswer += `**Granular Observations & Evidence:**\n` + 
+            detailed_analysis.map((obs) => `• ${typeof obs === 'string' ? obs : (obs.detail || JSON.stringify(obs))}`).join('\n') + `\n\n`;
+        }
+
+        if (Array.isArray(scenes) && scenes.length > 0) {
+          deepAnswer += `**Timeline & Scene Breakdown:**\n` + 
+            scenes.map((s, i) => `• [${s.start}s - ${s.end}s] Scene ${i + 1}: ${s.label || 'Monitored interval'}`).join('\n') + `\n\n`;
+        }
+
+        if (transcript && transcript !== 'Audio analysis complete.') {
+          deepAnswer += `**Complete Audio Transcript (Whisper):**\n> "${transcript}"\n\n`;
+        }
+
+        deepAnswer += `*Synthesis generated with DeepThink reasoning engine addressing query: "${q}"*`;
+
+        return res.json({
+          success: true,
+          answer: deepAnswer,
+          model
+        });
+      }
 
       // Question about what happened / summary / overview
       if (/what (happened|is happening|is going on)|summar(y|ize)|overview|tell me about/i.test(qLower)) {

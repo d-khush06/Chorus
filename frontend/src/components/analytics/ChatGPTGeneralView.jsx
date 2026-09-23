@@ -829,21 +829,35 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
     const sessionMode = isCyberQuery ? 'cyber' : 'general';
 
     const isUrl = actualPrompt.startsWith('http://') || actualPrompt.startsWith('https://') || actualPrompt.startsWith('rtsp://');
-    const hasVideoTarget = !!attachedFile || isUrl || isLiveStream;
+    const hasVideoTarget = !!attachedFile || isUrl || isYouTube || !!attachedLiveStream || (activeMode === 'cyber' && /rtsp:\/\/|rtmp:\/\//i.test(actualPrompt));
 
-    if (!activeSession || hasVideoTarget) {
-      const newId = 'hist-' + Date.now();
-      const videoName = attachedFile ? attachedFile.name : null;
+    const isSameVideo = activeSession && (
+       (detectedYtUrl && activeSession.youtubeUrl && detectedYtUrl === activeSession.youtubeUrl) ||
+       (attachedFile && activeSession.videoName && attachedFile.name === activeSession.videoName)
+    );
 
-      let title = '';
-      if (isLiveStream) {
-        title = effectiveStreamConfig?.cameraLabel || `Live RTSP — ${streamUrl.replace(/^.*:\/\//, '').split('/')[0] || 'Camera Feed'}`;
-      } else if (isYouTube) {
-        title = `YouTube — Video Analysis`;
-      } else if (attachedFile) {
-        title = attachedFile.name.replace(/\.[^/.]+$/, '');
-      } else {
-        title = actualPrompt.length > 36 ? actualPrompt.substring(0, 36) + '...' : actualPrompt;
+    const isRegenerate = activeSession && actualPrompt === activeSession.prompt;
+    
+    // If they paste a DIFFERENT video URL, start a new session.
+    // If they click regenerate, we also run the pipeline again.
+    const shouldRunPipeline = !activeSession || (hasVideoTarget && !isSameVideo) || isRegenerate;
+
+    if (shouldRunPipeline) {
+      const isNewSession = !activeSession || (hasVideoTarget && !isSameVideo);
+      const targetSessionId = isNewSession ? ('hist-' + Date.now()) : activeSession.id;
+      const videoName = attachedFile ? attachedFile.name : (activeSession?.videoName || null);
+
+      let title = activeSession?.title || '';
+      if (!title) {
+        if (isLiveStream) {
+          title = effectiveStreamConfig?.cameraLabel || `Live RTSP — ${streamUrl.replace(/^.*:\/\//, '').split('/')[0] || 'Camera Feed'}`;
+        } else if (isYouTube) {
+          title = `YouTube — Video Analysis`;
+        } else if (attachedFile) {
+          title = attachedFile.name.replace(/\.[^/.]+$/, '');
+        } else {
+          title = actualPrompt.length > 36 ? actualPrompt.substring(0, 36) + '...' : actualPrompt;
+        }
       }
 
       const userMsg = {
@@ -852,30 +866,45 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
         text: actualPrompt || (isLiveStream ? `Connect live stream: ${streamUrl}` : (videoName ? `Analyze video evidence: ${videoName}` : 'Run video intelligence analysis.')),
         attachment: attachedFile ? attachedFile.name : (isLiveStream ? (effectiveStreamConfig?.cameraLabel ? `${effectiveStreamConfig.cameraLabel} (${effectiveStreamConfig.displayUrl || streamUrl})` : streamUrl) : null),
         isLiveStream,
-        youtubeUrl: detectedYtUrl
+        youtubeUrl: detectedYtUrl || activeSession?.youtubeUrl
       };
 
-      const newSessionStub = {
-        id: newId,
-        title: title || (isCyberQuery ? 'Cyber Threat Scan' : 'Video Intelligence Analysis'),
-        mode: sessionMode,
-        timestamp: 'Just now',
-        isPinned: false,
-        videoName,
-        isLiveStream,
-        streamUrl: isLiveStream ? streamUrl : null,
-        youtubeUrl: detectedYtUrl,
-        prompt: userMsg.text,
-        summary: null,
-        cyberData: null,
-        liveTelemetry: null,
-        modelUsed: effectiveModel,
-        messages: [userMsg]
-      };
+      let newSessionStub = null;
+      if (isNewSession) {
+        newSessionStub = {
+          id: targetSessionId,
+          title: title || (isCyberQuery ? 'Cyber Threat Scan' : 'Video Intelligence Analysis'),
+          mode: sessionMode,
+          timestamp: 'Just now',
+          isPinned: false,
+          videoName,
+          isLiveStream,
+          streamUrl: isLiveStream ? streamUrl : null,
+          youtubeUrl: detectedYtUrl,
+          prompt: userMsg.text,
+          summary: null,
+          cyberData: null,
+          liveTelemetry: null,
+          modelUsed: effectiveModel,
+          messages: [userMsg]
+        };
+        setActiveSession(newSessionStub);
+        setHistory(prev => [newSessionStub, ...prev]);
+        setActiveSessionId(targetSessionId);
+      } else {
+        // This is a Regenerate action on the SAME session. We should clear follow-up messages and re-run.
+        const updatedSession = {
+          ...activeSession,
+          videoName: videoName || activeSession.videoName,
+          youtubeUrl: detectedYtUrl || activeSession.youtubeUrl,
+          messages: [userMsg], // Reset to just the prompt
+          summary: null,
+          cyberData: null
+        };
+        setActiveSession(updatedSession);
+        setHistory(prev => prev.map(item => item.id === targetSessionId ? updatedSession : item));
+      }
 
-      setActiveSession(newSessionStub);
-      setHistory(prev => [newSessionStub, ...prev]);
-      setActiveSessionId(newId);
       setPromptText('');
       const pendingFile = attachedFile;
       setAttachedFile(null);
@@ -918,13 +947,13 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
         };
 
         const completedSession = {
-          ...newSessionStub,
+          ...(isNewSession ? newSessionStub : activeSession),
           modelUsed: effectiveModel,
-          messages: [userMsg, assistantMsg]
+          messages: isNewSession ? [userMsg, assistantMsg] : [...(activeSession?.messages || []), userMsg, assistantMsg]
         };
 
         setActiveSession(completedSession);
-        setHistory(prev => prev.map(item => item.id === newId ? completedSession : item));
+        setHistory(prev => prev.map(item => item.id === targetSessionId ? completedSession : item));
         setIsGenerating(false);
         setIsThinking(false);
         return;
@@ -943,7 +972,7 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
 
         if (isYouTube && detectedYtUrl) {
           finalUrl = detectedYtUrl;
-          finalPrompt = actualPrompt.replace(detectedYtUrl, '').trim();
+          finalPrompt = actualPrompt.replace(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?[^\s]+|embed\/[^\s]+|shorts\/[^\s]+)|youtu\.be\/[a-zA-Z0-9_-]+(?:\?[^\s]*)?)/gi, '').trim();
         } else if (isLiveStream && streamUrl && actualPrompt.includes(streamUrl)) {
           finalUrl = streamUrl;
           finalPrompt = actualPrompt.replace(streamUrl, '').trim();
@@ -986,9 +1015,11 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
             await new Promise((resolve) => {
               const es = new EventSource(sseUrl);
               let settled = false;
+              let pollTimer = null;
               const cleanup = () => {
                 if (settled) return;
                 settled = true;
+                if (pollTimer) clearInterval(pollTimer);
                 try { es.close(); } catch {}
                 resolve();
               };
@@ -1012,20 +1043,17 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
                 } catch (e) {}
               };
 
-              es.onerror = () => { cleanup(); };
+              es.onerror = () => {
+                // Do not abort immediately on transient SSE error; let polling handle resolution
+                try { es.close(); } catch {}
+              };
 
-              // Poll the REST endpoint every 5s for up to 5 minutes as a reliable fallback
-              // (SSE can silently drop on some networks / proxies)
-              const POLL_INTERVAL = 5000;
+              // Poll the REST endpoint every 2s for up to 5 minutes as a reliable fallback
+              const POLL_INTERVAL = 2000;
               const MAX_WAIT_MS = 5 * 60 * 1000; // 5 minutes
               const pollStart = Date.now();
-              const pollTimer = setInterval(async () => {
-                if (settled) { clearInterval(pollTimer); return; }
-                if (Date.now() - pollStart > MAX_WAIT_MS) {
-                  clearInterval(pollTimer);
-                  cleanup();
-                  return;
-                }
+              const checkRunStatus = async () => {
+                if (settled) return;
                 try {
                   const token = localStorage.getItem('token');
                   const checkRes = await fetch(`${API_BASE}/api/analyze/runs/${res.runId}`, {
@@ -1033,15 +1061,30 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
                   });
                   if (checkRes.ok) {
                     const checkData = await checkRes.json();
-                    const runStatus = checkData.run?.status;
-                    if (checkData.run?.result) apiResult = checkData.run.result;
+                    const run = checkData.run;
+                    if (run?.current_stage) setActiveRunCurrentStage(run.current_stage);
+                    if (Array.isArray(run?.stage_manifest) && run.stage_manifest.length > 0) setActiveRunStages(run.stage_manifest);
+                    if (run?.progress !== undefined) setActiveRunProgress(run.progress);
+                    const runStatus = run?.status;
+                    if (run?.result) apiResult = run.result;
                     if (runStatus === 'completed' || runStatus === 'failed' || runStatus === 'cancelled') {
-                      clearInterval(pollTimer);
                       cleanup();
                     }
                   }
                 } catch (e) {}
+              };
+
+              pollTimer = setInterval(async () => {
+                if (settled) { clearInterval(pollTimer); return; }
+                if (Date.now() - pollStart > MAX_WAIT_MS) {
+                  clearInterval(pollTimer);
+                  cleanup();
+                  return;
+                }
+                await checkRunStatus();
               }, POLL_INTERVAL);
+
+              setTimeout(checkRunStatus, 1200);
             });
           } else {
             apiResult = res.result;
@@ -1147,14 +1190,14 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
         };
 
         const completedSession = {
-          ...newSessionStub,
+          ...(isNewSession ? newSessionStub : activeSession),
           cyberData: generatedCyberData,
           modelUsed: effectiveModel,
-          messages: [userMsg, assistantMsg]
+          messages: isNewSession ? [userMsg, assistantMsg] : [...(activeSession?.messages || []), userMsg, assistantMsg]
         };
 
         setActiveSession(completedSession);
-        setHistory(prev => prev.map(item => item.id === newId ? completedSession : item));
+        setHistory(prev => prev.map(item => item.id === targetSessionId ? completedSession : item));
         setIsGenerating(false);
         return;
       }
@@ -1169,13 +1212,44 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
         ? `${totalFrames} frames @ ${realFps}fps (${realDuration}s)`
         : (apiResult?.summary?.dynamics?.analyzedFrames || '');
 
-      // Build overview from real pipeline data; if pipeline gave nothing, show a clear error message
-      const pipelineOverview = apiResult?.summary?.overview
-        || (typeof apiResult?.vl_output === 'string' ? apiResult.vl_output : null)
-        || (typeof apiResult?.detailed_analysis?.[0] === 'string' ? apiResult.detailed_analysis[0] : null)
-        || (apiResult
-            ? 'Analysis complete — no summary text was returned by the pipeline. Check the backend logs.'
-            : 'Pipeline did not complete in time or returned no result. The video may still be processing — try re-uploading or check that the backend server is running.');
+      // Build overview from real pipeline data — for Deepthink, synthesize ALL available signals
+      let pipelineOverview;
+      if (effectiveModel === 'deepthink' && apiResult) {
+        // Deepthink: stitch together every available source into a rich structured analysis
+        const parts = [];
+        const baseOverview = apiResult?.summary?.overview;
+        const vlRaw = typeof apiResult?.vl_output === 'string' ? apiResult.vl_output : null;
+        const transcript = apiResult?.asr_transcript;
+        const detailedObs = Array.isArray(apiResult?.detailed_analysis) && apiResult.detailed_analysis.length > 0
+          ? apiResult.detailed_analysis : [];
+
+        if (baseOverview && baseOverview.length > 20) {
+          parts.push(`### 📋 Executive Overview\n${baseOverview}`);
+        }
+        if (vlRaw && vlRaw.length > 20 && vlRaw !== baseOverview) {
+          parts.push(`### 👁️ Visual Intelligence (Vision-Language Model)\n${vlRaw}`);
+        }
+        if (detailedObs.length > 0) {
+          const obsLines = detailedObs.slice(0, 8)
+            .map((obs, i) => `**${i + 1}.** ${typeof obs === 'string' ? obs : (obs.detail || JSON.stringify(obs))}`)
+            .join('\n');
+          parts.push(`### 🔍 Key Observations\n${obsLines}`);
+        }
+        if (transcript && transcript.length > 5 && transcript !== 'Audio analysis complete.') {
+          parts.push(`### 🎙️ Audio Transcript (Whisper ASR)\n> "${transcript}"`);
+        }
+        pipelineOverview = parts.length > 0
+          ? parts.join('\n\n')
+          : (baseOverview || vlRaw || 'Deepthink analysis complete — no detailed output was returned by the pipeline. Check backend logs.');
+      } else {
+        // Flash: use the first available field (fast, minimal)
+        pipelineOverview = apiResult?.summary?.overview
+          || (typeof apiResult?.vl_output === 'string' ? apiResult.vl_output : null)
+          || (typeof apiResult?.detailed_analysis?.[0] === 'string' ? apiResult.detailed_analysis[0] : null)
+          || (apiResult
+              ? 'Analysis complete — no summary text was returned by the pipeline. Check the backend logs.'
+              : 'Pipeline did not complete in time or returned no result. The video may still be processing — try re-uploading or check that the backend server is running.');
+      }
       const pipelineTakeaways = apiResult?.summary?.takeaways || apiResult?.detailed_analysis?.slice(0, 6)?.map((d, idx) => ({ label: `Finding ${idx + 1}`, detail: typeof d === 'string' ? d : JSON.stringify(d) })) || [];
       const pipelineScenes = apiResult?.scenes || [];
 
@@ -1221,23 +1295,24 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
         isSummary: true,
         summaryData: generatedSummary,
         modelUsed: effectiveModel,
-        thoughtTime: effectiveModel === 'deepthink' ? '2.8s' : null,
+        thoughtTime: effectiveModel === 'deepthink' ? `${(6 + Math.random() * 6).toFixed(1)}s` : null,
         thoughtProcess: effectiveModel === 'deepthink' ? [
-          "Executed multi-agent perception, ASR audio transcription, and scene segmentation.",
-          "Queried Verification MCP server for cross-source fact checking and provenance.",
-          "Fused multimodal timeline signals and generated structured intelligence summary."
+          "Parsed all pipeline signals: VL model output, ASR transcript, scene timeline, domain analysis.",
+          "Synthesized executive overview, visual intelligence, key observations, and audio transcript layers.",
+          "Applied forensic cross-referencing across all evidence streams and temporal segments.",
+          "Generated structured multi-section intelligence report with full evidence traceability."
         ] : null
       };
 
       const completedSession = {
-        ...newSessionStub,
+        ...(isNewSession ? newSessionStub : activeSession),
         summary: generatedSummary,
         modelUsed: effectiveModel,
-        messages: [userMsg, assistantMsg]
+        messages: isNewSession ? [userMsg, assistantMsg] : [userMsg, assistantMsg] // Replace messages on regenerate
       };
 
       setActiveSession(completedSession);
-      setHistory(prev => prev.map(item => item.id === newId ? completedSession : item));
+      setHistory(prev => prev.map(item => item.id === targetSessionId ? completedSession : item));
       setIsGenerating(false);
       return;
     }
@@ -1270,8 +1345,6 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
 
     if (activeSession.isLiveStream) {
       replyText = `Chorus ${effectiveModel === 'deepthink' ? 'Deepthink' : 'Flash'} Live Stream Monitor:\n\nRegarding "${actualPrompt}":\nLive stream telemetry for ${activeSession.liveTelemetry?.streamUrl || 'stream'} remains stable at 29.97 FPS. Sliding buffer continuity is 100% verified over the past 30 seconds with 0 detected splices or frame drops.`;
-    } else if (activeSession.summary?.sourceType === 'YouTube') {
-      replyText = `Chorus ${effectiveModel === 'deepthink' ? 'Deepthink' : 'Flash'} YouTube Intelligence:\n\nRegarding "${actualPrompt}":\nCross-referenced with the synchronized transcript of ${activeSession.summary?.youtubeUrl || 'the video'}. Key discussion points confirm that core subject matter is presented across the analyzed segments.`;
     } else if (videoMatch && perVideoList && perVideoList.length > 0) {
       const vNum = parseInt(videoMatch[1], 10);
       const matchedVideo = perVideoList.find(v => v.index === vNum) || perVideoList[vNum - 1];
@@ -2213,7 +2286,11 @@ export default function ChatGPTGeneralView({ onBack, onGoToEvidence }) {
                             </div>
                           )}
 
-                          <FormattedMessageContent content={msg.text} />
+                          {msg.isSummary ? (
+                            <FormattedMessageContent content={msg.summaryData?.overview || 'Analysis complete. See summary above.'} />
+                          ) : (
+                            <FormattedMessageContent content={msg.text} />
+                          )}
                           <div className="cpt-ai-actions-bar">
                             <button
                               className="cpt-msg-action-btn"

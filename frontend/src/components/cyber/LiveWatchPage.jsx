@@ -13,6 +13,13 @@ const RELAY_RTSP_BASE = import.meta.env.VITE_MEDIAMTX_RTSP_URL || 'rtsp://localh
 const RELAY_HLS_BASE = import.meta.env.VITE_MEDIAMTX_HLS_URL || 'http://localhost:8888';
 const DEFAULT_MODEL_NAME = import.meta.env.VITE_VL_MODEL_NAME || 'Chorus Multimodal VL Agent';
 
+const formatTimestamp = (totalSeconds) => {
+  if (isNaN(totalSeconds) || totalSeconds < 0) return '00:00';
+  const m = Math.floor(totalSeconds / 60);
+  const s = Math.floor(totalSeconds % 60);
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+};
+
 export function LiveWatchPage() {
   // Inputs start empty with placeholder text only per requirements
   const [cameraName, setCameraName] = useState('');
